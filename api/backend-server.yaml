@@ -1,0 +1,399 @@
+openapi: 3.1.0
+info:
+  title: backend-server
+  version: 0.3.0
+  x-status: draft
+  description: API between the resident's web app and the backend server (FastAPI) on AWS EC2 (since 2026-11-20). The server keeps no records; it relays each call to the hub at home and answers 503 while the hub is offline. Draft derived from the proposal, section IV-A. Live updates are pushed over a WebSocket.
+servers:
+  - url: https://nova.example.com/api
+    description: The server on AWS, through the ingress. The domain is still open
+  - url: http://localhost:8000
+    description: The server run directly, for tests
+security:
+  - session: []
+tags:
+  - name: Session
+    description: Sign-in of the resident's app. Every other operation needs the session cookie.
+  - name: Controls
+    description: Controls found by recognition (FR-01).
+  - name: Devices
+    description: Devices the cloud found or created during mapping. The resident can correct them (FR-02, FR-06).
+  - name: Mappings
+    description: Which control operates which device (FR-02).
+  - name: Routines
+    description: Routines from habits or built by hand, and the resident's feedback (FR-04, FR-06).
+  - name: Runs
+    description: One action from trigger to result, and its log (FR-12).
+  - name: Safety
+    description: Emergency stop and pausing proactive features (FR-10).
+paths:
+  /login:
+    post:
+      tags: [Session]
+      summary: Sign in
+      description: Checks the resident's password and sets the session cookie (HttpOnly, Secure, SameSite=Strict, 30 days, renewed while used).
+      x-requirements: [C-10]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Login' }
+      responses:
+        '204':
+          description: Signed in
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+              description: The session cookie
+        '401':
+          description: Wrong password
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Too many wrong passwords; try again in a minute
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /logout:
+    post:
+      tags: [Session]
+      summary: Sign out
+      description: Ends the session for good and clears the cookie.
+      x-requirements: [C-10]
+      responses:
+        '204':
+          description: Signed out
+  /me:
+    get:
+      tags: [Session]
+      summary: Check the session
+      description: The app calls this on start. 401 means it shows the sign-in screen.
+      x-requirements: [C-10]
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        '401':
+          $ref: '#/components/responses/SignedOut'
+  /controls:
+    get:
+      tags: [Controls]
+      summary: List controls
+      x-requirements: [FR-01]
+      responses:
+        '200':
+          description: Controls
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Control' } }
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List devices
+      x-requirements: [FR-02]
+      responses:
+        '200':
+          description: Devices
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Device' } }
+  /devices/{device_id}:
+    patch:
+      tags: [Devices]
+      summary: Correct a device
+      description: The resident renames a device or changes its room or risk. A changed risk takes effect from the next run.
+      x-requirements: [FR-02, FR-06]
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeviceUpdate' }
+      responses:
+        '200':
+          description: Updated device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Device' }
+        '404':
+          description: Unknown device
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /mappings:
+    get:
+      tags: [Mappings]
+      summary: List mappings
+      x-requirements: [FR-02]
+      parameters:
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/MappingStatus' }
+          description: Filter by status.
+      responses:
+        '200':
+          description: Mappings
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Mapping' } }
+  /mappings/{mapping_id}/confirm:
+    post:
+      tags: [Mappings]
+      summary: Confirm a mapping
+      description: The resident confirms a suggested mapping.
+      x-requirements: [FR-02]
+      parameters:
+        - name: mapping_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Updated mapping
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Mapping' }
+        '404':
+          description: Unknown mapping
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /mappings/{mapping_id}/reject:
+    post:
+      tags: [Mappings]
+      summary: Reject a mapping
+      description: The mapping becomes Rejected and is not used.
+      x-requirements: [FR-02]
+      parameters:
+        - name: mapping_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Updated mapping
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Mapping' }
+  /routines:
+    get:
+      tags: [Routines]
+      summary: List routines
+      x-requirements: [FR-04]
+      responses:
+        '200':
+          description: Routines
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Routine' } }
+    post:
+      tags: [Routines]
+      summary: Build a routine by hand
+      x-requirements: [FR-04]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Routine' }
+        '409':
+          description: The mapping is not Verified
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+  /routines/{routine_id}/feedback:
+    post:
+      tags: [Routines]
+      summary: Give feedback on a routine
+      description: Keep, change or remove a routine, or change how independently it acts.
+      x-requirements: [FR-04, FR-06]
+      parameters:
+        - name: routine_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoutineFeedback' }
+      responses:
+        '200':
+          description: Updated routine
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Routine' }
+  /runs:
+    get:
+      tags: [Runs]
+      summary: List runs with plain-language explanations
+      x-requirements: [FR-12]
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer }
+          description: Number of recent runs.
+      responses:
+        '200':
+          description: Runs, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Run' } }
+  /stop:
+    post:
+      tags: [Safety]
+      summary: Emergency stop
+      description: Turns off the motors of the actuators at once and cancels the current run.
+      x-requirements: [FR-10]
+      responses:
+        '200':
+          description: Stopped
+  /proactive:
+    put:
+      tags: [Safety]
+      summary: Pause or resume proactive features
+      x-requirements: [FR-06]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProactiveSetting' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProactiveSetting' }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Set by POST /login. Also required by the app's WebSocket.
+  responses:
+    SignedOut:
+      description: No valid session cookie
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Login:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, format: password }
+    Me:
+      type: object
+      required: [expires_at]
+      properties:
+        expires_at: { type: string, format: date-time }
+    ControlKind:
+      type: string
+      enum: [switch, toggle, power_strip]
+    Control:
+      type: object
+      required: [control_id, kind, state, position]
+      properties:
+        control_id: { type: string }
+        kind: { $ref: '#/components/schemas/ControlKind' }
+        state: { type: string, enum: ['on', 'off', unknown] }
+        actions: { type: array, items: { type: string, enum: [press, flip, turn] } }
+        position: { type: array, items: { type: number }, description: Point on the panel }
+        seen_at: { type: string, format: date-time }
+    MappingStatus:
+      type: string
+      enum: [Pending, Verified, Rejected, Stale]
+    Mapping:
+      type: object
+      required: [mapping_id, control_id, device_id, status, confidence]
+      properties:
+        mapping_id: { type: string }
+        control_id: { type: string }
+        device_id: { type: [string, 'null'], description: Null while Pending when the device detector found no device; the app asks the resident which device it is }
+        status: { $ref: '#/components/schemas/MappingStatus' }
+        confidence: { type: number, description: 0 to 1 }
+    Device:
+      type: object
+      required: [device_id, name, type, room, risk]
+      properties:
+        device_id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        room: { type: string }
+        risk: { type: string, enum: [low, high] }
+        channels: { type: array, items: { type: string, enum: [IR, WIFI, BT, ARM] } }
+    DeviceUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        room: { type: string }
+        risk: { type: string, enum: [low, high] }
+    Independence:
+      type: string
+      enum: [act_and_tell, ask_first, suggest_only]
+    Routine:
+      type: object
+      required: [routine_id, mapping_id, action, independence, priority]
+      properties:
+        routine_id: { type: string }
+        mapping_id: { type: string }
+        action: { type: string, enum: ['on', 'off'] }
+        time: { type: string, description: 'Time of day, for example "21:00"' }
+        source: { type: string, enum: [habit, manual] }
+        independence: { $ref: '#/components/schemas/Independence' }
+        priority: { type: number }
+    RoutineCreate:
+      type: object
+      required: [mapping_id, action]
+      properties:
+        mapping_id: { type: string }
+        action: { type: string, enum: ['on', 'off'] }
+        time: { type: string }
+        independence: { $ref: '#/components/schemas/Independence' }
+    RoutineFeedback:
+      type: object
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [keep, change, remove] }
+        time: { type: string, description: New time when the decision is change }
+        independence: { $ref: '#/components/schemas/Independence' }
+    Run:
+      type: object
+      required: [run_id, trigger, result, started_at]
+      properties:
+        run_id: { type: string }
+        trigger: { type: string, enum: [sensor, time, routine] }
+        intent: { type: string }
+        device_id: { type: string }
+        confidence: { type: number }
+        channel: { type: string, enum: [IR, WIFI, BT, ARM] }
+        result: { type: string, enum: [success, failure, unsure, cancelled] }
+        reason: { type: string, description: Reason for a cancellation }
+        explanation: { type: string, description: Plain-language sentence for the resident }
+        started_at: { type: string, format: date-time }
+    ProactiveSetting:
+      type: object
+      required: [paused]
+      properties:
+        paused: { type: boolean }
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string }
+        message: { type: string }
+        reason: { type: string }
