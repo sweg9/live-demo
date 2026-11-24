@@ -8,6 +8,7 @@ import { buildScene, highlighted, robotPoint, routeOf } from '../map/model'
 import { controls, devices, mappings } from '../mocks/fixtures'
 import { layout } from '../mocks/layout'
 
+const spot = (controlId: string) => layout.controls.find((c) => c.control_id === controlId)!.press_spot
 const withRejected = mappings.map((m) => (m.mapping_id === 'map-2' ? { ...m, status: 'Rejected' as const } : m))
 const scene = buildScene(layout, controls, devices, mappings)
 
@@ -17,6 +18,14 @@ describe('map model', () => {
     expect(container.querySelector('[data-testid=link-map-1]')).not.toHaveAttribute('stroke-dasharray') // Verified
     expect(container.querySelector('[data-testid=link-map-3]')).toHaveAttribute('stroke-dasharray') // Stale
     expect(container.querySelector('[data-testid=link-map-2]')).toBeNull() // Rejected
+  })
+
+  it('places every control and device inside a room of the layout', () => {
+    // Guards the scan-derived rooms against estimates that fall outside them.
+    const inside = (p: { x: number; y: number }) => layout.rooms.some((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)
+    for (const c of layout.controls) expect(inside(c.at) && inside(c.press_spot), c.control_id).toBe(true)
+    for (const d of layout.devices) expect(inside(d.at), d.device_id).toBe(true)
+    expect(inside(layout.dock)).toBe(true)
   })
 
   it('marks a power strip as caution', () => {
@@ -30,7 +39,7 @@ describe('map model', () => {
   })
 
   it('puts the robot at the press spot of the Verified control, else at the dock', () => {
-    expect(robotPoint(scene, mappings, { state: 'busy', device_id: 'dev-floor' })).toEqual({ x: 330, y: 70 })
+    expect(robotPoint(scene, mappings, { state: 'busy', device_id: 'dev-floor' })).toEqual(spot('ctl-living-3'))
     expect(robotPoint(scene, mappings, { state: 'idle' })).toEqual(layout.dock)
     // The desk lamp's mapping is Stale: the robot never goes there for it (C-08)
     expect(robotPoint(scene, mappings, { state: 'busy', device_id: 'dev-desk' })).toEqual(layout.dock)
@@ -42,8 +51,8 @@ describe('map model', () => {
       { device_id: 'dev-purifier', run_id: 'b', why: 'wireless_failed' as const },
     ]
     expect(routeOf(scene, mappings, visits, (id) => id === 'a')).toEqual([
-      { n: 1, at: { x: 330, y: 70 }, deviceId: 'dev-floor', done: true },
-      { n: 2, at: { x: 760, y: 70 }, deviceId: 'dev-purifier', done: false },
+      { n: 1, at: spot('ctl-living-3'), deviceId: 'dev-floor', done: true },
+      { n: 2, at: spot('ctl-bed-2'), deviceId: 'dev-purifier', done: false },
     ])
   })
 })
@@ -64,7 +73,7 @@ describe('FR-02 mappings on the map', () => {
     renderMappings()
     const map = await screen.findByRole('img', { name: 'Switches and devices on the home map' })
     await userEvent.click(within(map).getByRole('button', { name: 'Switch → Ceiling light' }))
-    expect(within(map).getByRole('button', { name: 'Ceiling light, Living room' })).toHaveClass('hl')
+    expect(within(map).getByRole('button', { name: 'Ceiling light, Room A' })).toHaveClass('hl')
     expect(screen.getByRole('cell', { name: 'Ceiling light' }).closest('tr')).toHaveClass('hl')
     expect(within(screen.getByLabelText('Selected item')).getByText(/ctl-living-1/)).toBeInTheDocument()
   })

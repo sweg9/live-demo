@@ -88,7 +88,7 @@ h2 { font-size: 1.05rem; margin-top: 1.5em; }
 /* Home map (2D plan; map/HomeMap.tsx) */
 .card.wide { grid-column: 1 / -1; }
 .small { font-size: 0.85rem; }
-.home-map { width: 100%; height: auto; max-height: 420px; display: block; }
+.home-map { width: 100%; height: auto; max-height: 560px; display: block; }
 .home-map .room { fill: var(--bg); stroke: var(--line); stroke-width: 3; }
 .home-map .room-label { fill: var(--muted); font-size: 22px; }
 .home-map .link { stroke-width: 3; opacity: 0.75; }

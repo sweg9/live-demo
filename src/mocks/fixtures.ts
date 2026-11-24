@@ -13,12 +13,12 @@ export const controls: Control[] = [
 ]
 
 export const devices: Device[] = [
-  { device_id: 'dev-ceiling', name: 'Ceiling light', type: 'light', room: 'Living room', risk: 'low', channels: ['WIFI', 'ARM'] },
-  { device_id: 'dev-fan', name: 'Fan', type: 'fan', room: 'Living room', risk: 'low', channels: ['IR', 'ARM'] },
-  { device_id: 'dev-desk', name: 'Desk lamp', type: 'light', room: 'Bedroom', risk: 'low', channels: ['ARM'] },
-  { device_id: 'dev-heater', name: 'Heater', type: 'heater', room: 'Bedroom', risk: 'high', channels: ['ARM'] },
-  { device_id: 'dev-floor', name: 'Floor lamp', type: 'light', room: 'Living room', risk: 'low', channels: ['ARM'] },
-  { device_id: 'dev-purifier', name: 'Air purifier', type: 'air_purifier', room: 'Bedroom', risk: 'low', channels: ['IR', 'ARM'] },
+  { device_id: 'dev-ceiling', name: 'Ceiling light', type: 'light', room: 'Room A', risk: 'low', channels: ['WIFI', 'ARM'] },
+  { device_id: 'dev-fan', name: 'Fan', type: 'fan', room: 'Room A', risk: 'low', channels: ['IR', 'ARM'] },
+  { device_id: 'dev-desk', name: 'Desk lamp', type: 'light', room: 'Room B', risk: 'low', channels: ['ARM'] },
+  { device_id: 'dev-heater', name: 'Heater', type: 'heater', room: 'Room B', risk: 'high', channels: ['ARM'] },
+  { device_id: 'dev-floor', name: 'Floor lamp', type: 'light', room: 'Room A', risk: 'low', channels: ['ARM'] },
+  { device_id: 'dev-purifier', name: 'Air purifier', type: 'air_purifier', room: 'Room B', risk: 'low', channels: ['IR', 'ARM'] },
 ]
 
 export const mappings: Mapping[] = [

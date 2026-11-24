@@ -25,10 +25,10 @@ type Plan = {
 }
 
 const PLANS: Plan[] = [
-  { key: 'ceiling', device_id: 'dev-ceiling', mapping_id: 'map-1', room: 'Living room', intent: 'Turn off the ceiling light', wireless: { channel: 'WIFI', works: true } },
-  { key: 'floor', device_id: 'dev-floor', mapping_id: 'map-5', room: 'Living room', intent: 'Turn off the floor lamp', wireless: null, gate: 'pass', checks: ['yes'] },
-  { key: 'purifier', device_id: 'dev-purifier', mapping_id: 'map-6', room: 'Bedroom', intent: 'Turn off the air purifier', wireless: { channel: 'IR', works: false }, gate: 'pass', checks: ['unsure', 'unsure'] },
-  { key: 'heater', device_id: 'dev-heater', mapping_id: 'map-4', room: 'Bedroom', intent: 'Turn off the heater', wireless: null, gate: 'fail' },
+  { key: 'ceiling', device_id: 'dev-ceiling', mapping_id: 'map-1', room: 'Room A', intent: 'Turn off the ceiling light', wireless: { channel: 'WIFI', works: true } },
+  { key: 'floor', device_id: 'dev-floor', mapping_id: 'map-5', room: 'Room A', intent: 'Turn off the floor lamp', wireless: null, gate: 'pass', checks: ['yes'] },
+  { key: 'purifier', device_id: 'dev-purifier', mapping_id: 'map-6', room: 'Room B', intent: 'Turn off the air purifier', wireless: { channel: 'IR', works: false }, gate: 'pass', checks: ['unsure', 'unsure'] },
+  { key: 'heater', device_id: 'dev-heater', mapping_id: 'map-4', room: 'Room B', intent: 'Turn off the heater', wireless: null, gate: 'fail' },
 ]
 
 let played = 0
