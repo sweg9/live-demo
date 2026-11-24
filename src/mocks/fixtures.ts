@@ -8,6 +8,8 @@ export const controls: Control[] = [
   { control_id: 'ctl-living-2', kind: 'switch', state: 'off', actions: ['flip'], position: [0.58, 0.41] },
   { control_id: 'ctl-bed-1', kind: 'toggle', state: 'off', actions: ['flip'], position: [0.5, 0.5] },
   { control_id: 'ctl-bed-strip', kind: 'power_strip', state: 'on', actions: ['press'], position: [0.2, 0.85] },
+  { control_id: 'ctl-living-3', kind: 'switch', state: 'on', actions: ['flip'], position: [0.74, 0.41] },
+  { control_id: 'ctl-bed-2', kind: 'switch', state: 'on', actions: ['flip'], position: [0.66, 0.5] },
 ]
 
 export const devices: Device[] = [
@@ -15,6 +17,8 @@ export const devices: Device[] = [
   { device_id: 'dev-fan', name: 'Fan', type: 'fan', room: 'Living room', risk: 'low', channels: ['IR', 'ARM'] },
   { device_id: 'dev-desk', name: 'Desk lamp', type: 'light', room: 'Bedroom', risk: 'low', channels: ['ARM'] },
   { device_id: 'dev-heater', name: 'Heater', type: 'heater', room: 'Bedroom', risk: 'high', channels: ['ARM'] },
+  { device_id: 'dev-floor', name: 'Floor lamp', type: 'light', room: 'Living room', risk: 'low', channels: ['ARM'] },
+  { device_id: 'dev-purifier', name: 'Air purifier', type: 'air_purifier', room: 'Bedroom', risk: 'low', channels: ['IR', 'ARM'] },
 ]
 
 export const mappings: Mapping[] = [
@@ -22,6 +26,8 @@ export const mappings: Mapping[] = [
   { mapping_id: 'map-2', control_id: 'ctl-living-2', device_id: 'dev-fan', status: 'Pending', confidence: 0.83 },
   { mapping_id: 'map-3', control_id: 'ctl-bed-1', device_id: 'dev-desk', status: 'Stale', confidence: 0.18 },
   { mapping_id: 'map-4', control_id: 'ctl-bed-strip', device_id: 'dev-heater', status: 'Verified', confidence: 0.88 },
+  { mapping_id: 'map-5', control_id: 'ctl-living-3', device_id: 'dev-floor', status: 'Verified', confidence: 0.9 },
+  { mapping_id: 'map-6', control_id: 'ctl-bed-2', device_id: 'dev-purifier', status: 'Verified', confidence: 0.86 },
 ]
 
 export const routines: Routine[] = [
