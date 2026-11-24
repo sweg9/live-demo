@@ -1,17 +1,25 @@
-import type { RunProgress } from '../api/proposed'
-import { bedtimeScenario } from '../mocks/scenario'
-import { devices, mappings } from '../mocks/fixtures'
+import type { LiveEvent, RunProgress } from '../api/proposed'
+import { bedtimeScenario, retryScenario, routeScenario } from '../mocks/scenario'
+import { devices, mappings, runs as fixtureRuns } from '../mocks/fixtures'
+import { hub } from '../mocks/hub'
 import { currentStep, initialLive, reduce, runsOf } from '../live/live'
 
-// The mock scenario is what the team will show, so it must follow the safety rules too.
+// The mock scenarios are what the team will show, so they must follow the safety rules too.
 
-const events = bedtimeScenario().map((t) => t.event)
-const progress = events.flatMap((e) => (e.kind === 'run.progress' ? [e.data] : []))
-const results = events.flatMap((e) => (e.kind === 'run.result' ? [e.data] : []))
-const runIds = [...new Set(progress.map((p) => p.run_id))]
-const stepsOf = (id: string): RunProgress[] => progress.filter((p) => p.run_id === id)
+const run = (id: string) => fixtureRuns.find((r) => r.run_id === id)!
+const SCENARIOS: Record<string, LiveEvent[]> = {
+  bedtime: bedtimeScenario().map((t) => t.event),
+  'retry after a failed gate (heater)': retryScenario(run('run-3'), 'map-4').map((t) => t.event),
+  'retry after a Wi-Fi failure (ceiling light)': retryScenario(run('run-1'), 'map-1').map((t) => t.event),
+}
+const events = SCENARIOS.bedtime
 
-describe('demo scenario rules', () => {
+describe.each(Object.entries(SCENARIOS))('scenario rules: %s', (_name, events) => {
+  const progress = events.flatMap((e) => (e.kind === 'run.progress' ? [e.data] : []))
+  const results = events.flatMap((e) => (e.kind === 'run.result' ? [e.data] : []))
+  const runIds = [...new Set(progress.map((p) => p.run_id))]
+  const stepsOf = (id: string): RunProgress[] => progress.filter((p) => p.run_id === id)
+
   it('C-04: every press comes right after a passed safety gate, at most 2 per run', () => {
     for (const id of runIds) {
       const steps = stepsOf(id)
@@ -64,6 +72,49 @@ describe('demo scenario rules', () => {
         const at = events.findIndex((e) => e.kind === 'run.result' && e.data.run_id === r.run_id)
         expect(events.slice(at).some((e) => e.kind === 'notification')).toBe(true)
       })
+  })
+})
+
+describe('move order (robot.route)', () => {
+  const route = routeScenario('route-t', ['dev-floor', 'dev-purifier']).map((t) => t.event)
+  const robot = route.flatMap((e) => (e.kind === 'robot.status' ? [e.data] : []))
+
+  it('C-04: checks the way before every move, and never presses', () => {
+    robot.forEach((s, i) => {
+      if (s.step === 'move') expect(robot[i - 1]).toMatchObject({ step: 'gate', device_id: s.device_id })
+    })
+    expect(robot.some((s) => s.step === 'press')).toBe(false)
+    expect(route.some((e) => e.kind === 'run.progress' || e.kind === 'run.result')).toBe(false)
+  })
+
+  it('reaches every stop in order and leaves the robot at the last one', () => {
+    const reached = route.flatMap((e) => (e.kind === 'robot.route' ? [e.data.reached] : []))
+    expect(reached).toEqual([0, 1, 2])
+    expect(robot.at(-1)).toMatchObject({ state: 'idle', device_id: 'dev-purifier' })
+  })
+})
+
+describe('mock hub: emergency stop', () => {
+  afterEach(() => hub.reset())
+
+  it('C-09: ends every open run as cancelled with reason "emergency stop"', () => {
+    const sent: LiveEvent[] = []
+    hub.send = (e) => sent.push(e)
+    // Play the bedtime scenario up to the first press, then stop.
+    const firstPress = events.findIndex((e) => e.kind === 'run.progress' && e.data.step === 'press')
+    events.slice(0, firstPress + 1).forEach((e) => hub.emit(e))
+    const open = [...hub.state.active.keys()]
+    expect(open.length).toBeGreaterThan(0)
+    hub.stop()
+    const cancelled = sent.flatMap((e) => (e.kind === 'run.result' && e.data.reason === 'emergency stop' ? [e.data.run_id] : []))
+    expect(cancelled.sort()).toEqual(open.sort())
+    expect(sent.at(-1)).toEqual({ kind: 'robot.status', data: { state: 'stopped' } })
+    expect(hub.timers).toHaveLength(0)
+  })
+
+  it('refuses a move order while the robot is busy', () => {
+    hub.state.robot = 'busy'
+    expect(hub.route(['dev-floor']).status).toBe(409)
   })
 })
 

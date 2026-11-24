@@ -13,10 +13,14 @@ export type Stage = 'S1' | 'S2' | 'S3' | 'S4' | 'S5' | 'S6' | 'S7'
 export type Channel = 'IR' | 'WIFI' | 'BT' | 'ARM'
 export type CheckAnswer = 'yes' | 'no' | 'unsure'
 
-/** NEW kind `situation`: what came in and started routines (S4). */
+/**
+ * NEW kind `situation`: what came in and started routines (S4).
+ * `resident` is NEW vocabulary (data-model.md has sensor, time, routine): a run the resident
+ * started from the app, such as Try again. Needs a change in harness standards first (C-02).
+ */
 export type Situation = {
   situation_id: string
-  trigger: Run['trigger']
+  trigger: Run['trigger'] | 'resident'
   summary: string // plain language, from a fixed template (C-07)
   at: string // UTC ISO 8601
 }
@@ -69,8 +73,34 @@ export type HomeLayout = {
   dock: Point // where the robot waits
 }
 
+/**
+ * NEW kind `robot.route`: a move order from the resident ("go here", "stop here, then go
+ * there"). Not a run: nothing is pressed. Every leg still passes the safety gate (C-04).
+ * `reached` counts the stops the robot has arrived at.
+ */
+export type RobotRoute = {
+  route_id: string
+  stops: string[] // device ids, in order
+  reached: number
+  state: 'moving' | 'done' | 'cancelled'
+  reason?: string
+}
+
+// ---- NEW HTTP routes (the app calls them; the mock answers) ---------------------------------
+
+/** NEW `POST /runs/{run_id}/retry` → 202. The resident asks again after a failed or unsure run (C-09). */
+export type RetryAccepted = { run_id: string; retry_run_id: string }
+/** NEW `POST /runs/{run_id}/leave` → 200. The resident leaves it as it is; the run stops asking. */
+export type Resolution = 'retried' | 'left'
+/** Runs as /runs would list them with the NEW field `resolution`: what the resident chose. */
+export type RunWithResolution = Run & { resolution?: Resolution }
+/** NEW `POST /robot/route` body → 202 { route_id }. 409 while the robot is busy. */
+export type RouteOrder = { stops: string[] }
+/** NEW `GET /proactive` → the same ProactiveSetting PUT /proactive saves. */
+
 export type LiveEvent =
   | { kind: 'situation'; data: Situation }
+  | { kind: 'robot.route'; data: RobotRoute }
   | { kind: 'routine'; data: Routine & { situation_id?: string } }
   | { kind: 'run.progress'; data: RunProgress }
   | { kind: 'robot.plan'; data: RobotPlan }

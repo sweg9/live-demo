@@ -1,79 +1,100 @@
-import { http, HttpResponse, delay, ws } from 'msw'
-import type { Run } from '../api/client'
+import { http, HttpResponse, delay, ws, type HttpResponseResolver, type PathParams } from 'msw'
 import * as fx from './fixtures'
-import { bedtimeScenario } from './scenario'
+import { hub } from './hub'
 import { layout } from './layout'
 
-// Browser mock of api/backend-server.yaml. Same paths and shapes as the real server, so turning
-// the mock off (VITE_MOCK=off) is the only change needed to use it.
-// Kept in memory: a reload starts the demo data again.
+// Browser mock of api/backend-server.yaml, plus the routes proposed in api/proposed.ts (marked
+// PROPOSED). Same paths and shapes as the real server, so turning the mock off (VITE_MOCK=off)
+// is the only change needed to use it. The records and the live events live in mocks/hub.ts.
 
-const state = {
-  mappings: structuredClone(fx.mappings),
-  runs: structuredClone(fx.runs) as Run[],
-  paused: false,
-}
-
-// The app's live WebSocket. Each connection plays the bedtime scenario; the message "replay"
-// plays it again. The real server ignores what the app sends, so the app may send it anyway.
 export const REPLAY = 'replay'
+const LATENCY_MS = 150 // looks like a network round trip; not a product value
+
+// The app's live WebSocket. Like the real server, it refuses a screen without a session. Each
+// connection plays the bedtime scenario; the message "replay" plays it again. The real server
+// ignores what the app sends, so the app may send it anyway.
 const live = ws.link('*/api/ws/app')
-
-// One playback at a time, for the newest connection: like one hub, one house. (React's dev mode
-// connects twice; without this both connections played and every run was stored twice.)
-let timers: ReturnType<typeof setTimeout>[] = []
-
 const liveHandler = live.addEventListener('connection', ({ client }) => {
-  const play = () => {
-    timers.forEach(clearTimeout)
-    timers = []
-    let at = 0
-    for (const { delayMs, event } of bedtimeScenario()) {
-      at += delayMs
-      timers.push(
-        setTimeout(() => {
-          if (event.kind === 'run.result' && !state.runs.some((r) => r.run_id === event.data.run_id)) state.runs.unshift(event.data)
-          client.send(JSON.stringify(event))
-        }, at),
-      )
-    }
+  if (!hub.state.signedIn) {
+    client.close(1008, 'signed out')
+    return
   }
-  client.addEventListener('message', (e) => e.data === REPLAY && play())
-  play()
+  hub.send = (event) => client.send(JSON.stringify(event))
+  hub.closeLive = () => client.close(1008, 'signed out')
+  client.addEventListener('message', (e) => e.data === REPLAY && hub.bedtime())
+  hub.bedtime()
 })
 
-const LATENCY_MS = 150 // looks like a network round trip; not a product value
+const SIGNED_OUT = { code: 'signed_out', message: 'Sign in first' }
+
+/** Every route but /login needs the session, as on the real server. */
+type Resolver<P extends PathParams> = HttpResponseResolver<P, any, any>
+function signedIn<P extends PathParams = PathParams>(resolver: Resolver<P>): Resolver<P> {
+  return (info) => (hub.state.signedIn ? resolver(info) : HttpResponse.json(SIGNED_OUT, { status: 401 }))
+}
+
+const reply = ({ status, body }: { status: number; body?: unknown }) =>
+  body === undefined ? new HttpResponse(null, { status }) : HttpResponse.json(body as object, { status })
 
 export const handlers = [
   liveHandler,
-  http.get('/api/me', () => HttpResponse.json({ expires_at: new Date(Date.now() + 30 * 864e5).toISOString() })),
-  http.get('/api/controls', async () => (await delay(LATENCY_MS), HttpResponse.json(fx.controls))),
-  http.get('/api/devices', async () => (await delay(LATENCY_MS), HttpResponse.json(fx.devices))),
-  http.get('/api/mappings', async () => (await delay(LATENCY_MS), HttpResponse.json(state.mappings))),
-  http.get('/api/map', () => HttpResponse.json(layout)), // PROPOSED route, see api/proposed.ts
-  http.get('/api/routines',async () => (await delay(LATENCY_MS), HttpResponse.json(fx.routines))),
-  http.get('/api/runs', async ({ request }) => {
+
+  // Session
+  http.post('/api/login', async ({ request }) => {
     await delay(LATENCY_MS)
-    const limit = Number(new URL(request.url).searchParams.get('limit') ?? state.runs.length)
-    return HttpResponse.json(state.runs.slice(0, limit))
+    const { password } = (await request.json()) as { password?: string }
+    return reply(hub.login(password ?? ''))
   }),
+  http.post('/api/logout', () => {
+    hub.state.signedIn = false
+    hub.cancel()
+    hub.closeLive?.()
+    return new HttpResponse(null, { status: 204 })
+  }),
+  http.get('/api/me', signedIn(() => HttpResponse.json({ expires_at: new Date(Date.now() + 30 * 864e5).toISOString() }))),
 
-  http.post<{ id: string }>('/api/mappings/:id/confirm', ({ params }) => setStatus(params.id, 'Verified')),
-  http.post<{ id: string }>('/api/mappings/:id/reject', ({ params }) => setStatus(params.id, 'Rejected')),
-
-  http.post('/api/stop', async () => {
+  // Lists
+  http.get('/api/controls', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.controls)))),
+  http.get('/api/devices', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.devices)))),
+  http.get('/api/mappings', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(hub.state.mappings)))),
+  http.get('/api/routines', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.routines)))),
+  http.get('/api/runs', signedIn(async ({ request }) => {
     await delay(LATENCY_MS)
+    const limit = Number(new URL(request.url).searchParams.get('limit') ?? hub.state.runs.length)
+    return HttpResponse.json(hub.state.runs.slice(0, limit))
+  })),
+  http.get('/api/map', signedIn(() => HttpResponse.json(layout))), // PROPOSED
+
+  // Mappings
+  http.post<{ id: string }>('/api/mappings/:id/confirm', signedIn(({ params }) => setStatus(params.id, 'Verified'))),
+  http.post<{ id: string }>('/api/mappings/:id/reject', signedIn(({ params }) => setStatus(params.id, 'Rejected'))),
+
+  // Runs: what the resident chooses after a failure (PROPOSED, C-09)
+  http.post<{ id: string }>('/api/runs/:id/retry', signedIn(({ params }) => reply(hub.retry(params.id)))),
+  http.post<{ id: string }>('/api/runs/:id/leave', signedIn(({ params }) => reply(hub.leave(params.id)))),
+
+  // Robot move order (PROPOSED)
+  http.post('/api/robot/route', signedIn(async ({ request }) => {
+    const { stops } = (await request.json()) as { stops: string[] }
+    return reply(hub.route(stops))
+  })),
+
+  // Safety
+  http.post('/api/stop', signedIn(async () => {
+    await delay(LATENCY_MS)
+    hub.stop()
     return HttpResponse.json({ ral: 'stopped' })
-  }),
-  http.put('/api/proactive', async ({ request }) => {
+  })),
+  http.get('/api/proactive', signedIn(() => HttpResponse.json({ paused: hub.state.paused }))), // PROPOSED
+  http.put('/api/proactive', signedIn(async ({ request }) => {
     const body = (await request.json()) as { paused: boolean }
-    state.paused = body.paused
-    return HttpResponse.json({ paused: state.paused })
-  }),
+    hub.state.paused = body.paused
+    return HttpResponse.json({ paused: hub.state.paused })
+  })),
 ]
 
 function setStatus(id: string, status: 'Verified' | 'Rejected') {
-  const m = state.mappings.find((x) => x.mapping_id === id)
+  const m = hub.state.mappings.find((x) => x.mapping_id === id)
   if (!m) return HttpResponse.json({ code: 'not_found', message: 'No such mapping' }, { status: 404 })
   m.status = status
   return HttpResponse.json(m)
