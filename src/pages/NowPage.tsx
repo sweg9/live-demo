@@ -14,6 +14,10 @@ export function NowPage() {
   const active = runs.filter((r) => !r.result)
   const finished = runs.filter((r) => r.result)
   const robot = live.robot
+  // robot.status arrives only when the robot starts a visit or a press; the run's own steps are
+  // finer (gate, check), so the robot card follows the run it is working on.
+  const robotRun = robot.state === 'busy' ? active.find((r) => r.device_id === robot.device_id) : undefined
+  const robotStep = robotRun ? currentStep(robotRun) : robot.step
 
   return (
     <section>
@@ -34,7 +38,7 @@ export function NowPage() {
         <div className="card" aria-label="Robot">
           <h2>Robot</h2>
           <p className="lead">
-            {robot.state === 'busy' && robot.step ? STEP_LABEL[robot.step] : robot.state === 'idle' ? 'Idle' : robot.state}
+            {robot.state === 'busy' && robotStep ? STEP_LABEL[robotStep] : robot.state === 'idle' ? 'Idle' : robot.state}
           </p>
           {robot.device_id && (
             <p className="muted">
@@ -73,8 +77,8 @@ export function NowPage() {
         {finished.map((r) => (
           <li key={r.run_id} className={`run ${r.result!.result}`}>
             <span className="badge">{r.result!.result}</span>
-            <span className="what">{r.result!.explanation ?? devices.name(r.device_id)}</span>
-            <span />
+            <span className="when">{devices.name(r.device_id)}</span>
+            <span className="what">{r.result!.explanation}</span>
             <span className="meta">{r.result!.channel}</span>
           </li>
         ))}

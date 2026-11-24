@@ -19,9 +19,10 @@ export function FailuresPage() {
         {open.map((r) => (
           <li key={r.run_id} className={`run ${r.result}`}>
             <span className="badge">{r.result}</span>
-            <span className="what">{r.explanation ?? r.intent}</span>
-            <span className="meta">
-              {r.channel ?? ''} {r.reason ? `· ${r.reason}` : ''}
+            <span className="when">{new Date(r.started_at).toLocaleString()}</span>
+            <span className="what">
+              {r.explanation ?? r.intent}
+              <span className="meta"> · {[r.channel, r.reason].filter(Boolean).join(' · ')}</span>
             </span>
             <span className="actions">
               <button disabled title="No API route yet">Try again</button>

@@ -18,8 +18,11 @@ const state = {
 export const REPLAY = 'replay'
 const live = ws.link('*/api/ws/app')
 
+// One playback at a time, for the newest connection: like one hub, one house. (React's dev mode
+// connects twice; without this both connections played and every run was stored twice.)
+let timers: ReturnType<typeof setTimeout>[] = []
+
 const liveHandler = live.addEventListener('connection', ({ client }) => {
-  let timers: ReturnType<typeof setTimeout>[] = []
   const play = () => {
     timers.forEach(clearTimeout)
     timers = []
@@ -28,14 +31,13 @@ const liveHandler = live.addEventListener('connection', ({ client }) => {
       at += delayMs
       timers.push(
         setTimeout(() => {
-          if (event.kind === 'run.result') state.runs.unshift(event.data)
+          if (event.kind === 'run.result' && !state.runs.some((r) => r.run_id === event.data.run_id)) state.runs.unshift(event.data)
           client.send(JSON.stringify(event))
         }, at),
       )
     }
   }
   client.addEventListener('message', (e) => e.data === REPLAY && play())
-  client.addEventListener('close', () => timers.forEach(clearTimeout))
   play()
 })
 

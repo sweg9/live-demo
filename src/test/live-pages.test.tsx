@@ -54,7 +54,22 @@ describe('FR-05, FR-07 Situation → run', () => {
   })
 })
 
+describe('Situation → run, before the visit plan arrives', () => {
+  it('says it is planning, not that nothing is left', () => {
+    const lastWireless = events.findLastIndex((e) => e.kind === 'run.progress' && e.data.step === 'wireless')
+    renderAt('/flow', upTo(lastWireless + 1)) // every wireless result in, robot.plan not yet
+    expect(screen.getByText('Planning the visits…')).toBeInTheDocument()
+    expect(screen.queryByText('Nothing left for the robot.')).toBeNull()
+  })
+})
+
 describe('Now', () => {
+  it('the robot card follows the step of the run it works on', () => {
+    const gate = firstIndex((e) => e.kind === 'run.progress' && e.data.step === 'gate')
+    renderAt('/', upTo(gate + 1)) // robot.status still says move; the run is at the gate
+    expect(within(screen.getByLabelText('Robot')).getByText('Safety check')).toBeInTheDocument()
+  })
+
   it('shows the situation, the robot and the finished runs', async () => {
     renderAt('/', upTo(events.length))
     expect(screen.getByText('It is 23:00: the bedtime routine started.')).toBeInTheDocument()

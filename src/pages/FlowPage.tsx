@@ -74,7 +74,7 @@ export function FlowPage() {
 
         <li className="flow-step" aria-label="Visit order">
           <h2>4. Robot visits (S6)</h2>
-          {visits.length === 0 && <p className="muted">{runs.every((r) => r.wireless) ? 'Nothing left for the robot.' : 'Waiting for the wireless results.'}</p>}
+          {visits.length === 0 && <p className="muted">{visitsNote(runs)}</p>}
           <ol className="visits">
             {visits.map((v) => {
               const r = live.runs[v.run_id]
@@ -96,6 +96,13 @@ export function FlowPage() {
       </ol>
     </section>
   )
+}
+
+// Before robot.plan arrives: still trying wireless, planning the visits, or nothing to visit.
+export function visitsNote(runs: DeviceRun[]) {
+  if (runs.some((r) => !r.wireless)) return 'Waiting for the wireless results.'
+  if (runs.every((r) => r.wireless === 'success')) return 'Nothing left for the robot.'
+  return 'Planning the visits…'
 }
 
 function Track({ run, name }: { run: DeviceRun; name: string }) {
