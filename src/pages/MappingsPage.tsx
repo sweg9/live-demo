@@ -1,13 +1,20 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Device, type Mapping } from '../api/client'
+import { HomeMap, MapTag } from '../map/HomeMap'
+import { highlighted, type Selection } from '../map/model'
+import { useScene } from '../map/useScene'
 
 // FR-02, C-06, C-08: the resident confirms or rejects a mapping. Only Verified mappings are used,
-// so the status is always shown next to the link.
+// so the status is always shown next to the link. Selecting a switch on the map (or its row)
+// highlights the devices it is linked to.
 
 export function MappingsPage() {
   const qc = useQueryClient()
   const mappings = useQuery({ queryKey: ['mappings'], queryFn: () => unwrap(api.GET('/mappings')) })
   const devices = useQuery({ queryKey: ['devices'], queryFn: () => unwrap(api.GET('/devices')) })
+  const map = useScene()
+  const [selection, setSelection] = useState<Selection>(null)
 
   const act = useMutation({
     mutationFn: ({ id, verb }: { id: string; verb: 'confirm' | 'reject' }) =>
@@ -22,10 +29,22 @@ export function MappingsPage() {
 
   const byId = new Map((devices.data ?? []).map((d: Device) => [d.device_id, d]))
   const rooms = groupBy(mappings.data, (m) => (m.device_id && byId.get(m.device_id)?.room) || 'Unknown room')
+  const hl = map.scene ? highlighted(map.scene, selection) : new Set<string>()
 
   return (
     <section>
       <h1>Mappings</h1>
+      {map.scene && (
+        <div className="card map-card">
+          <HomeMap scene={map.scene} selection={selection} onSelect={setSelection} label="Switches and devices on the home map" />
+          <div className="map-legend muted">
+            <span><i className="lg solid" /> confirmed</span>
+            <span><i className="lg dashed" /> guess</span>
+            <span><i className="lg caution" /> caution: not pressed directly</span>
+          </div>
+          <MapTag scene={map.scene} selection={selection} />
+        </div>
+      )}
       {[...rooms].map(([room, list]) => (
         <div key={room}>
           <h2>{room}</h2>
@@ -37,8 +56,12 @@ export function MappingsPage() {
               {list.map((m: Mapping) => {
                 const d = m.device_id ? byId.get(m.device_id) : undefined
                 return (
-                  <tr key={m.mapping_id}>
-                    <td>{m.control_id}</td>
+                  <tr key={m.mapping_id} className={hl.has(m.mapping_id) ? 'hl' : undefined}>
+                    <td>
+                      <button type="button" className="linklike" onClick={() => setSelection({ kind: 'control', id: m.control_id })}>
+                        {m.control_id}
+                      </button>
+                    </td>
                     <td>
                       {d ? d.name : 'Which device is this?'}
                       {d?.risk === 'high' && <span className="badge high">high risk</span>}

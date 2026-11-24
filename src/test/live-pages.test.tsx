@@ -64,6 +64,16 @@ describe('Situation → run, before the visit plan arrives', () => {
 })
 
 describe('Now', () => {
+  it('the robot card never shows an older step than its run', () => {
+    // At every point of the scenario where the robot is busy, the card shows the run's step.
+    events.forEach((e, i) => {
+      if (e.kind !== 'robot.status' || e.data.state !== 'busy') return
+      const s = upTo(i + 1)
+      const run = Object.values(s.runs).find((r) => r.device_id === e.data.device_id && !r.result)!
+      expect(run.steps.at(-1)?.step, `event ${i}`).not.toBe('queued')
+    })
+  })
+
   it('the robot card follows the step of the run it works on', () => {
     const gate = firstIndex((e) => e.kind === 'run.progress' && e.data.step === 'gate')
     renderAt('/', upTo(gate + 1)) // robot.status still says move; the run is at the gate

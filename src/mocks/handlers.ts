@@ -2,6 +2,7 @@ import { http, HttpResponse, delay, ws } from 'msw'
 import type { Run } from '../api/client'
 import * as fx from './fixtures'
 import { bedtimeScenario } from './scenario'
+import { layout } from './layout'
 
 // Browser mock of api/backend-server.yaml. Same paths and shapes as the real server, so turning
 // the mock off (VITE_MOCK=off) is the only change needed to use it.
@@ -49,7 +50,8 @@ export const handlers = [
   http.get('/api/controls', async () => (await delay(LATENCY_MS), HttpResponse.json(fx.controls))),
   http.get('/api/devices', async () => (await delay(LATENCY_MS), HttpResponse.json(fx.devices))),
   http.get('/api/mappings', async () => (await delay(LATENCY_MS), HttpResponse.json(state.mappings))),
-  http.get('/api/routines', async () => (await delay(LATENCY_MS), HttpResponse.json(fx.routines))),
+  http.get('/api/map', () => HttpResponse.json(layout)), // PROPOSED route, see api/proposed.ts
+  http.get('/api/routines',async () => (await delay(LATENCY_MS), HttpResponse.json(fx.routines))),
   http.get('/api/runs', async ({ request }) => {
     await delay(LATENCY_MS)
     const limit = Number(new URL(request.url).searchParams.get('limit') ?? state.runs.length)

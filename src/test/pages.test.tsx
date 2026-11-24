@@ -59,7 +59,7 @@ describe('FR-12 history (C-07)', () => {
 describe('FR-02 mappings (C-06, C-08)', () => {
   it('confirms a Pending mapping', async () => {
     renderAt('/mappings')
-    const row = (await screen.findByText('Fan')).closest('tr')!
+    const row = (await screen.findByRole('cell', { name: 'Fan' })).closest('tr')!
     expect(within(row).getByText('Pending')).toBeInTheDocument()
     await userEvent.click(within(row).getByRole('button', { name: 'Confirm' }))
     expect(await within(row).findByText('Verified')).toBeInTheDocument()

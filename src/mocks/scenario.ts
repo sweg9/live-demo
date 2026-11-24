@@ -77,8 +77,10 @@ export function bedtimeScenario(now = () => new Date()): Timed[] {
   for (const p of visits) progress(p, { stage: 'S6', step: 'queued' })
 
   for (const p of visits) {
-    emit({ kind: 'robot.status', data: { state: 'busy', device_id: p.device_id, step: 'move', room: p.room } })
-    progress(p, { stage: 'S6', step: 'move' }, )
+    // The run moves on first, then the robot reports it: the robot card never shows a step
+    // older than the run's own.
+    progress(p, { stage: 'S6', step: 'move' })
+    emit({ kind: 'robot.status', data: { state: 'busy', device_id: p.device_id, step: 'move', room: p.room } }, 100)
     progress(p, { stage: 'S6', step: 'gate', gate: p.gate, reason: p.gate === 'fail' ? 'person_in_work_area' : undefined })
     if (p.gate === 'fail') {
       result(p, { result: 'cancelled', channel: 'ARM', reason: 'person_in_work_area', explanation: `The ${name(p)} was not pressed because someone was near it. Nothing was tried again.` })

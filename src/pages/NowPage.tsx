@@ -3,12 +3,16 @@ import { useLive } from '../live/LiveProvider'
 import { currentStep, runsOf } from '../live/live'
 import { STEP_LABEL } from '../live/labels'
 import { LiveBar } from './LiveBar'
+import { HomeMap } from '../map/HomeMap'
+import { robotPoint, routeOf } from '../map/model'
+import { useScene } from '../map/useScene'
 
 // What is happening right now: the situation, the robot, and every run it started.
 
 export function NowPage() {
   const live = useLive()
   const devices = useDevices()
+  const map = useScene()
   const situation = live.situations[0]
   const runs = situation ? runsOf(live, situation.situation_id) : []
   const active = runs.filter((r) => !r.result)
@@ -46,13 +50,21 @@ export function NowPage() {
             </p>
           )}
         </div>
-        <div className="card placeholder-box">
-          <h2>Camera</h2>
-          <p className="muted">The robot's camera stays at home: no video leaves the home (C-05). The hub's own dashboard shows it.</p>
-        </div>
-        <div className="card placeholder-box">
+        <div className="card wide">
           <h2>Map</h2>
-          <p className="muted">The robot on the home map comes with the map component.</p>
+          {map.scene ? (
+            <HomeMap
+              scene={map.scene}
+              robot={robotPoint(map.scene, map.mappings, robot)}
+              route={situation ? routeOf(map.scene, map.mappings, live.plans[situation.situation_id] ?? [], (id) => !!live.runs[id]?.result) : []}
+              label="The robot and its route on the home map"
+            />
+          ) : (
+            <p className="muted">{map.error ? `Could not load the map: ${map.error.message}` : 'Loading the map…'}</p>
+          )}
+          <p className="muted small">
+            Camera: the robot's camera stays at home, no video leaves the home (C-05). The hub's own dashboard shows it.
+          </p>
         </div>
       </div>
 

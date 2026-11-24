@@ -56,6 +56,19 @@ export type RobotStatus = {
   room?: string
 }
 
+/**
+ * NEW route `GET /map`: the home as the map team will provide it (a floor plan now, 3D later).
+ * Units are centimetres on the floor, x to the right, y down. Only positions: names, kinds,
+ * statuses and risk still come from /controls, /devices and /mappings.
+ */
+export type Point = { x: number; y: number }
+export type HomeLayout = {
+  rooms: Array<{ room: string; x: number; y: number; w: number; h: number }>
+  controls: Array<{ control_id: string; at: Point; press_spot: Point }>
+  devices: Array<{ device_id: string; at: Point }>
+  dock: Point // where the robot waits
+}
+
 export type LiveEvent =
   | { kind: 'situation'; data: Situation }
   | { kind: 'routine'; data: Routine & { situation_id?: string } }

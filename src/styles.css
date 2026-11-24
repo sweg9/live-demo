@@ -85,6 +85,42 @@ h2 { font-size: 1.05rem; margin-top: 1.5em; }
 .track li.past { color: var(--ok); }
 .track li.now { background: var(--accent); color: #fff; font-weight: 600; }
 
+/* Home map (2D plan; map/HomeMap.tsx) */
+.card.wide { grid-column: 1 / -1; }
+.small { font-size: 0.85rem; }
+.home-map { width: 100%; height: auto; max-height: 420px; display: block; }
+.home-map .room { fill: var(--bg); stroke: var(--line); stroke-width: 3; }
+.home-map .room-label { fill: var(--muted); font-size: 22px; }
+.home-map .link { stroke-width: 3; opacity: 0.75; }
+.home-map .link.confirmed { stroke: var(--accent); }
+.home-map .link.guess { stroke: var(--warn); }
+.home-map .link.hl { stroke-width: 6; opacity: 1; }
+.home-map .dim { opacity: 0.2; }
+.home-map .device circle { fill: var(--panel); stroke: var(--accent); stroke-width: 3; }
+.home-map .device.risk-high circle { stroke: var(--bad); }
+.home-map .item-label { fill: var(--text); font-size: 20px; }
+.home-map .control rect { fill: var(--text); }
+.home-map .control.caution rect { fill: var(--warn); }
+.home-map .caution-mark { fill: #fff; font-size: 18px; font-weight: 700; pointer-events: none; }
+.home-map .hl circle, .home-map .control.hl rect { stroke: var(--accent); stroke-width: 6; }
+.home-map [role='button'] { cursor: pointer; outline: none; }
+.home-map [role='button']:focus-visible circle, .home-map [role='button']:focus-visible rect { stroke: var(--accent); stroke-width: 6; }
+.home-map .route { stroke: var(--muted); stroke-width: 3; stroke-dasharray: 2 10; stroke-linecap: round; opacity: 0.8; }
+.home-map .route-head { fill: var(--muted); }
+.home-map .stop circle { fill: var(--panel); stroke: var(--muted); stroke-width: 2; }
+.home-map .stop text { fill: var(--text); font-size: 18px; font-weight: 600; }
+.home-map .stop.done { opacity: 0.35; }
+.home-map .robot rect { fill: var(--accent); }
+.home-map .robot text { fill: #fff; font-size: 20px; font-weight: 700; }
+.map-card { margin-bottom: 8px; padding-top: 12px; }
+.map-legend { display: flex; gap: 16px; font-size: 0.85rem; margin: 6px 0; }
+.lg { display: inline-block; width: 22px; height: 0; vertical-align: middle; margin-right: 4px; border-top: 3px solid var(--accent); }
+.lg.dashed { border-top: 3px dashed var(--warn); }
+.lg.caution { width: 12px; height: 12px; border: none; border-radius: 3px; background: var(--warn); }
+.map-tag { margin: 8px 0 4px; }
+tr.hl td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.linklike { border: none; background: none; padding: 0; color: var(--accent); text-decoration: underline; }
+
 .rank-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .rank { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px 12px; }
 .rank h2 { font-size: 0.95rem; margin: 12px 0 8px; }
