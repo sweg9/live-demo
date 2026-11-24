@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap, type Device } from '../api/client'
+import type { RunWithResolution } from '../api/proposed'
 import { failureReasons, frequentDevices, successRates, verifiedShare, type Ranked } from './stats'
 
 // FR-12, C-07: every run in plain language, and simple stats computed from the same list.
@@ -39,7 +40,12 @@ export function HistoryPage() {
           <li key={r.run_id} className={`run ${r.result}`}>
             <span className="badge">{r.result}</span>
             <span className="when">{new Date(r.started_at).toLocaleString()}</span>
-            <span className="what">{r.explanation ?? r.intent ?? r.run_id}</span>
+            <span className="what">
+              {r.explanation ?? r.intent ?? r.run_id}
+              {(r as RunWithResolution).resolution && (
+                <span className="badge">{(r as RunWithResolution).resolution === 'retried' ? 'you tried again' : 'you left it'}</span>
+              )}
+            </span>
             <span className="meta">
               {r.device_id ? names.get(r.device_id) ?? r.device_id : ''} {r.channel ? `· ${r.channel}` : ''}
             </span>

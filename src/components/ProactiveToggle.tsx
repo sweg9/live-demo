@@ -1,29 +1,29 @@
-import { useState } from 'react'
-import { api } from '../api/client'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, unwrap } from '../api/client'
+import { proposed } from '../api/extra'
 
 // FR-06, C-06: the resident can pause proactive features from any screen.
-// The API has PUT /proactive only (no GET), so the state shown is the last one the server confirmed.
+// The state comes from GET /proactive (PROPOSED). Without it, the screen shows "unknown" until
+// the resident saves one with PUT /proactive.
 
 export function ProactiveToggle() {
-  const [paused, setPaused] = useState<boolean | null>(null)
-  const [busy, setBusy] = useState(false)
-
-  async function set(next: boolean) {
-    setBusy(true)
-    const { data, response } = await api.PUT('/proactive', { body: { paused: next } })
-    if (response.ok && data) setPaused(data.paused)
-    setBusy(false)
-  }
+  const qc = useQueryClient()
+  const current = useQuery({ queryKey: ['proactive'], queryFn: proposed.proactive, retry: false })
+  const save = useMutation({
+    mutationFn: (paused: boolean) => unwrap(api.PUT('/proactive', { body: { paused } })),
+    onSuccess: (data) => qc.setQueryData(['proactive'], data),
+  })
+  const paused = current.data?.paused ?? null
 
   return (
     <div className="proactive">
       <span className="proactive-label">
-        Automation: {paused === null ? '—' : paused ? 'paused' : 'on'}
+        Automation: {paused === null ? 'unknown' : paused ? 'paused' : 'on'}
       </span>
-      <button type="button" disabled={busy || paused === true} onClick={() => set(true)}>
+      <button type="button" disabled={save.isPending || paused === true} onClick={() => save.mutate(true)}>
         Pause
       </button>
-      <button type="button" disabled={busy || paused === false} onClick={() => set(false)}>
+      <button type="button" disabled={save.isPending || paused === false} onClick={() => save.mutate(false)}>
         Resume
       </button>
     </div>

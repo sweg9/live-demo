@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import { hub } from '../mocks/hub'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -67,9 +68,36 @@ describe('FR-02 mappings (C-06, C-08)', () => {
 })
 
 describe('C-09 failures', () => {
-  it('lists failed, unsure and cancelled runs and never retries on its own', async () => {
+  const row = async (text: RegExp) => (await screen.findByText(text)).closest('li')!
+
+  it('lists failed, unsure and cancelled runs and does nothing until the resident chooses', async () => {
     renderAt('/failures')
     expect(await screen.findByText(/could not tell whether the desk lamp/)).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Try again' }).every((b) => (b as HTMLButtonElement).disabled)).toBe(true)
+    expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(3)
+    expect(hub.state.runs.some((r) => r.resolution)).toBe(false)
+    expect(hub.timers).toHaveLength(0) // nothing was started on its own
+  })
+
+  it('Leave it takes the run off the list and keeps it in History', async () => {
+    renderAt('/failures')
+    await userEvent.click(within(await row(/Wi-Fi did not answer/)).getByRole('button', { name: 'Leave it' }))
+    expect(await screen.findByText(/Left as it is/)).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText(/Wi-Fi did not answer/)).toBeNull())
+    expect(hub.state.runs.find((r) => r.run_id === 'run-1')?.resolution).toBe('left')
+  })
+
+  it('Try again starts a new run only when asked', async () => {
+    renderAt('/failures')
+    await userEvent.click(within(await row(/someone was near the power strip/)).getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByText(/Trying again/)).toBeInTheDocument()
+    expect(hub.state.runs.find((r) => r.run_id === 'run-3')?.resolution).toBe('retried')
+    expect(hub.timers.length).toBeGreaterThan(0)
+  })
+
+  it('C-08: refuses to retry a device whose switch is not confirmed', async () => {
+    renderAt('/failures')
+    await userEvent.click(within(await row(/desk lamp turned on/)).getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not confirmed/)
+    expect(hub.timers).toHaveLength(0)
   })
 })

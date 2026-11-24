@@ -72,10 +72,20 @@ export function pressSpotFor(scene: Scene, mappings: Mapping[], deviceId: string
   return m ? scene.controls.find((c) => c.id === m.control_id)?.pressSpot : undefined
 }
 
-/** Where to draw the robot: at the press spot of the device it works on, else at the dock. */
+/**
+ * Where to draw the robot: at the spot of the device it works on or last went to (a move order
+ * or a stop leaves it there), else at the dock.
+ */
 export function robotPoint(scene: Scene, mappings: Mapping[], robot: { state: string; device_id?: string }): Point {
-  if (robot.state === 'busy' && robot.device_id) return pressSpotFor(scene, mappings, robot.device_id) ?? scene.dock
-  return scene.dock
+  return (robot.device_id && pressSpotFor(scene, mappings, robot.device_id)) || scene.dock
+}
+
+/** A move order as numbered stops; the ones already reached are marked done. */
+export function routeStops(scene: Scene, mappings: Mapping[], route: { stops: string[]; reached: number }): Stop[] {
+  return route.stops.flatMap((id, i) => {
+    const at = pressSpotFor(scene, mappings, id)
+    return at ? [{ n: i + 1, at, deviceId: id, done: i < route.reached }] : []
+  })
 }
 
 /** The visit list as numbered stops on the floor. */

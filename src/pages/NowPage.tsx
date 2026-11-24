@@ -4,10 +4,12 @@ import { currentStep, runsOf } from '../live/live'
 import { STEP_LABEL } from '../live/labels'
 import { LiveBar } from './LiveBar'
 import { HomeMap } from '../map/HomeMap'
-import { robotPoint, routeOf } from '../map/model'
+import { robotPoint, routeOf, routeStops } from '../map/model'
 import { useScene } from '../map/useScene'
 
 // What is happening right now: the situation, the robot, and every run it started.
+
+const ROBOT_STATE = { idle: 'Idle', busy: 'Working', stopped: 'Stopped', error: 'Error: check the robot' } as const
 
 export function NowPage() {
   const live = useLive()
@@ -42,7 +44,7 @@ export function NowPage() {
         <div className="card" aria-label="Robot">
           <h2>Robot</h2>
           <p className="lead">
-            {robot.state === 'busy' && robotStep ? STEP_LABEL[robotStep] : robot.state === 'idle' ? 'Idle' : robot.state}
+            {robot.state === 'busy' && robotStep ? STEP_LABEL[robotStep] : ROBOT_STATE[robot.state]}
           </p>
           {robot.device_id && (
             <p className="muted">
@@ -56,7 +58,13 @@ export function NowPage() {
             <HomeMap
               scene={map.scene}
               robot={robotPoint(map.scene, map.mappings, robot)}
-              route={situation ? routeOf(map.scene, map.mappings, live.plans[situation.situation_id] ?? [], (id) => !!live.runs[id]?.result) : []}
+              route={
+                live.route?.state === 'moving'
+                  ? routeStops(map.scene, map.mappings, live.route)
+                  : situation
+                    ? routeOf(map.scene, map.mappings, live.plans[situation.situation_id] ?? [], (id) => !!live.runs[id]?.result)
+                    : []
+              }
               label="The robot and its route on the home map"
             />
           ) : (

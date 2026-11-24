@@ -1,5 +1,5 @@
 import type { Routine, Run } from '../api/client'
-import type { LiveEvent, RobotStatus, RunProgress, Situation, Visit } from '../api/proposed'
+import type { LiveEvent, RobotRoute, RobotStatus, RunProgress, Situation, Visit } from '../api/proposed'
 
 // Everything the live screens know, built only from WebSocket events. The server keeps nothing,
 // so after a reconnect the lists are read again over HTTP (wiki: Hub messages > app.event).
@@ -20,6 +20,7 @@ export type LiveState = {
   runs: Record<string, DeviceRun> // by run_id
   plans: Record<string, Visit[]> // by situation_id
   robot: RobotStatus
+  route: RobotRoute | null // the newest move order
   notifications: string[] // newest first
 }
 
@@ -32,6 +33,7 @@ export const initialLive: LiveState = {
   runs: {},
   plans: {},
   robot: { state: 'idle' },
+  route: null,
   notifications: [],
 }
 
@@ -61,7 +63,11 @@ export function reduce(s: LiveState, a: LiveAction): LiveState {
     case 'robot.plan':
       return { ...s, plans: { ...s.plans, [e.data.situation_id]: e.data.visits } }
     case 'robot.status':
+      // A stop does not move the robot: it stays where it was.
+      if (e.data.state === 'stopped' && !e.data.device_id) return { ...s, robot: { ...e.data, device_id: s.robot.device_id, room: s.robot.room } }
       return { ...s, robot: e.data }
+    case 'robot.route':
+      return { ...s, route: e.data }
     case 'notification':
       return { ...s, notifications: [e.data.text, ...s.notifications].slice(0, KEEP_SITUATIONS) }
     default:

@@ -121,6 +121,13 @@ h2 { font-size: 1.05rem; margin-top: 1.5em; }
 tr.hl td { background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .linklike { border: none; background: none; padding: 0; color: var(--accent); text-decoration: underline; }
 
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+.block { display: block; margin-top: 4px; }
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.order { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 16px 12px; margin: 8px 0; }
+.order ol { margin: 6px 0 10px; padding-left: 22px; }
+
 .rank-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .rank { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px 12px; }
 .rank h2 { font-size: 0.95rem; margin: 12px 0 8px; }
