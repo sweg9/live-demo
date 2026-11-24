@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { EmergencyStop } from './EmergencyStop'
 import { ProactiveToggle } from './ProactiveToggle'
+import { SignOut } from './SignOut'
 
 export const NAV = [
   { to: '/', label: 'Now' },
@@ -19,6 +20,7 @@ export function Layout() {
         <strong className="brand">NOVA</strong>
         <ProactiveToggle />
         <EmergencyStop />
+        <SignOut />
       </header>
       <nav className="side-nav">
         {NAV.map((n) => (

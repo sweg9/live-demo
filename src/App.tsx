@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
+import { AuthGate } from './components/AuthGate'
 import { Layout } from './components/Layout'
 import { NowPage } from './pages/NowPage'
 import { FlowPage } from './pages/FlowPage'
@@ -9,7 +10,8 @@ import { HistoryPage } from './pages/HistoryPage'
 
 export default function App() {
   return (
-    <Routes>
+    <AuthGate>
+      <Routes>
       <Route element={<Layout />}>
         <Route index element={<NowPage />} />
         <Route path="flow" element={<FlowPage />} />
@@ -18,6 +20,7 @@ export default function App() {
         <Route path="robot" element={<RobotPage />} />
         <Route path="history" element={<HistoryPage />} />
       </Route>
-    </Routes>
+      </Routes>
+    </AuthGate>
   )
 }
