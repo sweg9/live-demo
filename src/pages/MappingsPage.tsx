@@ -33,7 +33,6 @@ export function MappingsPage() {
 
   return (
     <section>
-      <h1>Mappings</h1>
       {map.scene && (
         <div className="card map-card">
           <HomeMap scene={map.scene} selection={selection} onSelect={setSelection} label="Switches and devices on the home map" />

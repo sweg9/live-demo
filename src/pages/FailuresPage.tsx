@@ -36,7 +36,6 @@ export function FailuresPage() {
 
   return (
     <section>
-      <h1>Failures</h1>
       <p className="muted">Nothing here is tried again on its own. Choose for each one.</p>
       {notice?.ok && (
         <p role="status" className="ok">

@@ -19,7 +19,6 @@ export function FlowPage() {
   if (!situation) {
     return (
       <section>
-        <h1>Situation → run</h1>
         <LiveBar />
         <p className="muted">Waiting for a situation.</p>
       </section>
@@ -34,7 +33,6 @@ export function FlowPage() {
 
   return (
     <section>
-      <h1>Situation → run</h1>
       <LiveBar />
       <ol className="flow">
         <li className="flow-step">

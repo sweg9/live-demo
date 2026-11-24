@@ -19,7 +19,6 @@ export function HistoryPage() {
 
   return (
     <section>
-      <h1>History & stats</h1>
       <div className="stat-row">
         <Stat label="Wireless success" value={pct(rates.wireless)} />
         <Stat label="Press success" value={pct(rates.arm)} />

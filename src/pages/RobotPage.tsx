@@ -44,7 +44,6 @@ export function RobotPage() {
 
   return (
     <section>
-      <h1>Send the robot</h1>
       <p className="muted">Select places on the map in the order to visit. Select again to remove.</p>
       <div className="card map-card">
         <HomeMap

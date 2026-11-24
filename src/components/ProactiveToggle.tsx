@@ -3,8 +3,8 @@ import { api, unwrap } from '../api/client'
 import { proposed } from '../api/extra'
 
 // FR-06, C-06: the resident can pause proactive features from any screen.
-// The state comes from GET /proactive (PROPOSED). Without it, the screen shows "unknown" until
-// the resident saves one with PUT /proactive.
+// Shows the state, and only the action that changes it. The state comes from GET /proactive
+// (PROPOSED); while it is unknown, both actions are offered.
 
 export function ProactiveToggle() {
   const qc = useQueryClient()
@@ -18,14 +18,19 @@ export function ProactiveToggle() {
   return (
     <div className="proactive">
       <span className="proactive-label">
+        <span className={`status-dot ${paused === null ? '' : paused ? 'unsure' : 'success'}`} aria-hidden="true" />
         Automation: {paused === null ? 'unknown' : paused ? 'paused' : 'on'}
       </span>
-      <button type="button" disabled={save.isPending || paused === true} onClick={() => save.mutate(true)}>
-        Pause
-      </button>
-      <button type="button" disabled={save.isPending || paused === false} onClick={() => save.mutate(false)}>
-        Resume
-      </button>
+      {paused !== true && (
+        <button type="button" disabled={save.isPending} onClick={() => save.mutate(true)}>
+          Pause
+        </button>
+      )}
+      {paused !== false && (
+        <button type="button" disabled={save.isPending} onClick={() => save.mutate(false)}>
+          Resume
+        </button>
+      )}
     </div>
   )
 }

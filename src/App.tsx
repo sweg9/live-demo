@@ -7,6 +7,7 @@ import { FailuresPage } from './pages/FailuresPage'
 import { MappingsPage } from './pages/MappingsPage'
 import { RobotPage } from './pages/RobotPage'
 import { HistoryPage } from './pages/HistoryPage'
+import { MenuPage } from './pages/MenuPage'
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="mappings" element={<MappingsPage />} />
         <Route path="robot" element={<RobotPage />} />
         <Route path="history" element={<HistoryPage />} />
+        <Route path="menu" element={<MenuPage />} />
       </Route>
       </Routes>
     </AuthGate>
