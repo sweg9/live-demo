@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { LiveProvider } from './live/LiveProvider'
 import './styles.css'
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } } })
@@ -16,9 +17,11 @@ async function start() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <LiveProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </LiveProvider>
       </QueryClientProvider>
     </StrictMode>,
   )
