@@ -55,3 +55,12 @@ h2 { font-size: 1.05rem; margin-top: 1.5em; }
 .stat-value { font-size: 1.6rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 .stat-label { color: var(--muted); font-size: 0.85rem; }
 .needs li { color: var(--warn); }
+
+.rank-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rank { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 16px 12px; }
+.rank h2 { font-size: 0.95rem; margin: 12px 0 8px; }
+.rank ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.rank li { display: grid; grid-template-columns: 160px 1fr 24px; align-items: center; gap: 8px; font-size: 0.9rem; }
+.rank-key { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-bar { height: 8px; border-radius: 4px; background: var(--accent); opacity: 0.7; }
+.rank-count { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }

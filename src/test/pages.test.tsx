@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
-import { stats } from '../pages/HistoryPage'
-import { runs } from '../mocks/fixtures'
+import { failureReasons, frequentDevices, successRates, verifiedShare } from '../pages/stats'
+import { mappings, runs } from '../mocks/fixtures'
 
 function renderAt(path: string) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -26,7 +26,33 @@ describe('FR-12 history (C-07)', () => {
 
   it('leaves cancelled runs out of the success rates', () => {
     // WIFI: 1 success, 1 failure. ARM: 1 success, 1 unsure, 1 cancelled (left out).
-    expect(stats(runs)).toEqual({ wireless: 0.5, arm: 0.5 })
+    expect(successRates(runs)).toEqual({ wireless: 0.5, arm: 0.5 })
+  })
+
+  it('ranks why runs did not succeed, by the cancel reason or by result and channel', () => {
+    expect(failureReasons(runs)).toEqual([
+      { key: 'failure · WIFI', count: 1 },
+      { key: 'person_in_work_area', count: 1 },
+      { key: 'unsure · ARM', count: 1 },
+    ])
+  })
+
+  it('ranks the most used devices', () => {
+    expect(frequentDevices(runs)[0]).toEqual({ key: 'dev-ceiling', count: 2 })
+  })
+
+  it('counts the verified share without rejected mappings (C-08)', () => {
+    expect(verifiedShare(mappings)).toBe(0.5) // 2 Verified of 4, none Rejected
+    expect(verifiedShare([{ ...mappings[0], status: 'Rejected' }, mappings[1]])).toBe(0) // 0 of 1 open
+    expect(verifiedShare([])).toBeNull()
+  })
+
+  it('shows the rankings on the page', async () => {
+    renderAt('/history')
+    const reasons = await screen.findByLabelText('Why runs did not succeed')
+    expect(within(reasons).getByText('person_in_work_area')).toBeInTheDocument()
+    const used = screen.getByLabelText('Most used devices')
+    expect(await within(used).findByText('Ceiling light')).toBeInTheDocument()
   })
 })
 
