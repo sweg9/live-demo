@@ -90,6 +90,16 @@ describe.each(Object.entries(SCENARIOS))('scenario rules: %s', (name, events) =>
   })
 })
 
+describe('FR-11: one more press after a failed check, like the hub', () => {
+  const floor = events.flatMap((e) => (e.kind === 'run.progress' && e.data.device_id === 'dev-floor' ? [e.data] : []))
+
+  it('presses twice, each after a passed gate, when the first check says no', () => {
+    expect(floor.filter((p) => p.step === 'press').map((p) => p.text)).toEqual(['press', 'press again'])
+    expect(floor.filter((p) => p.gate).map((p) => p.gate)).toEqual(['pass', 'pass'])
+    expect(floor.filter((p) => p.step === 'check' && p.answer).map((p) => p.answer)).toEqual(['no', 'yes'])
+  })
+})
+
 describe('move order (robot.route)', () => {
   const route = routeScenario('route-t', ['spot-living-3', 'spot-bed-2']).map((t) => t.event)
   const robot = route.flatMap((e) => (e.kind === 'robot' ? [e.data] : []))

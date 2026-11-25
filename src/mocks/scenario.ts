@@ -25,13 +25,14 @@ import { layout } from './layout'
 //
 // The bedtime scenario shows every path the dashboard must handle:
 //   Ceiling light  WIFI works                                   → success (S5)
-//   Floor lamp     no wireless channel → press, check yes       → success (S6)
+//   Floor lamp     no wireless → press, no change → gate, press again, yes → success (FR-11)
 //   Air purifier   IR fails → press, unsure, one more look      → unsure, never pressed again (C-09)
 //   Heater         no wireless → safety gate fails              → cancelled (C-04), notified (C-03)
 
 export type Timed = { delayMs: number; event: LiveEvent }
 
 const STEP_MS = 900 // pacing of the demo only, not a product value
+const MAX_PRESSES = 2 // mirrors the hub's MAX_ARM_ATTEMPTS (FR-11, L-04)
 const MOVE_MS = 1500
 
 export const EMERGENCY = 'emergency stop'
@@ -45,13 +46,14 @@ export type Plan = {
   routine?: boolean
   wireless: { channel: Exclude<Channel, 'ARM'>; works: boolean } | null
   gate?: 'pass' | 'fail'
-  /** The camera's answers: the first, and the one more look after an unsure (FR-08). */
+  secondGate?: 'pass' | 'fail' // before a second press
+  /** The camera's answers in order: one per check, plus one more look after an unsure (FR-08). */
   checks?: Array<'yes' | 'no' | 'unsure'>
 }
 
 const BEDTIME: Plan[] = [
   { key: 'ceiling', device_id: 'dev-ceiling', action: 'off', routine: true, wireless: { channel: 'WIFI', works: true } },
-  { key: 'floor', device_id: 'dev-floor', action: 'off', wireless: null, gate: 'pass', checks: ['yes'] },
+  { key: 'floor', device_id: 'dev-floor', action: 'off', wireless: null, gate: 'pass', checks: ['no', 'yes'] },
   { key: 'purifier', device_id: 'dev-purifier', action: 'off', wireless: { channel: 'IR', works: false }, gate: 'pass', checks: ['unsure', 'unsure'] },
   { key: 'heater', device_id: 'dev-heater', action: 'off', routine: true, wireless: null, gate: 'fail' },
 ]
@@ -176,33 +178,43 @@ class Player {
     this.task(r, 'move', 'drive to the switch', 'S6', 'ARM')
     this.moveTo(v.spot_id)
     if (this.robot.plan[0] === v.spot_id) this.robot.plan.shift()
-    status('pressing')
-    this.robot.state = 'pressing'
-    this.task(r, 'gate', 'safety gate: no person in the work area', 'S6', 'ARM')
-    const ok = r.plan.gate !== 'fail'
-    this.progress(r, 'gate', ok ? 'safety gate passed' : `safety gate failed: ${PERSON}`, 'S6', 'ARM', { gate: ok ? 'pass' : 'fail', reason: ok ? null : PERSON })
-    if (!ok) {
-      // C-04: no press
-      this.close(r, 'cancelled', PERSON)
-      status('cancelled')
-      return
-    }
-    this.task(r, 'press', 'press', 'S6', 'ARM')
-    this.robot.state = 'checking'
-    status('checking')
-    this.task(r, 'check', 'check the effect with the camera', 'S6', 'ARM')
-    const [first = 'yes', again = 'unsure'] = r.plan.checks ?? []
-    let answer = first
+    // FR-11: a failed check (`no`) leads to one more press after a new gate, at most MAX_PRESSES (L-04).
+    // `unsure` is looked at once more and never pressed again (FR-08, C-09).
+    const answers = [...(r.plan.checks ?? ['yes'])]
     const unclear = `the camera could not tell whether the ${lower(r.item.device_id)} changed`
-    if (answer === 'unsure') {
-      // FR-08, C-09: one more look, never another press
-      this.progress(r, 'check', 'unsure', 'S6', 'ARM', { answer, reason: unclear })
-      this.task(r, 'check', 'unsure: look once more without pressing again', 'S6', 'ARM')
-      answer = again
+    let answer: 'yes' | 'no' | 'unsure' = 'yes'
+    let presses = 0
+    for (let n = 1; n <= MAX_PRESSES; n++) {
+      const again = n > 1
+      status('pressing')
+      this.robot.state = 'pressing'
+      this.task(r, 'gate', again ? 'safety gate before the second press' : 'safety gate: no person in the work area', 'S6', 'ARM')
+      const ok = (again ? r.plan.secondGate : r.plan.gate) !== 'fail'
+      this.progress(r, 'gate', ok ? 'safety gate passed' : `safety gate failed: ${PERSON}`, 'S6', 'ARM', { gate: ok ? 'pass' : 'fail', reason: ok ? null : PERSON })
+      if (!ok) {
+        // C-04: no press
+        this.close(r, 'cancelled', PERSON)
+        status('cancelled')
+        return
+      }
+      this.task(r, 'press', again ? 'press again' : 'press', 'S6', 'ARM')
+      presses = n
+      this.robot.state = 'checking'
+      status('checking')
+      this.task(r, 'check', 'check the effect with the camera', 'S6', 'ARM')
+      answer = answers.shift() ?? 'yes'
+      if (answer === 'unsure') {
+        this.progress(r, 'check', 'unsure', 'S6', 'ARM', { answer, reason: unclear })
+        this.task(r, 'check', 'unsure: look once more without pressing again', 'S6', 'ARM')
+        answer = answers.shift() ?? 'unsure'
+      }
+      const more = answer === 'no' && n < MAX_PRESSES
+      const said = { yes: 'it worked', no: more ? 'it did not work: press once more' : 'it did not work', unsure: 'still unsure' }[answer]
+      this.progress(r, 'check', said, 'S6', 'ARM', { answer, reason: answer === 'yes' ? null : answer === 'no' ? 'the check saw no change' : unclear })
+      if (!more) break
     }
-    const why = answer === 'yes' ? undefined : answer === 'no' ? 'the check saw no change' : unclear
-    this.progress(r, 'check', { yes: 'it worked', no: 'it did not work', unsure: 'still unsure' }[answer], 'S6', 'ARM', { answer, reason: why ?? null })
     const result = answer === 'yes' ? 'success' : answer === 'no' ? 'failure' : 'unsure'
+    const why = answer === 'yes' ? undefined : answer === 'no' ? `${presses > 1 ? 'pressed twice: ' : ''}the check saw no change` : unclear
     this.close(r, result, why)
     status(result === 'success' ? 'done' : 'failed')
   }
