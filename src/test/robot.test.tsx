@@ -5,7 +5,9 @@ import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
 import { LiveStateProvider } from '../live/LiveProvider'
 import { IDLE_ROBOT, initialLive, type LiveState } from '../live/live'
+import { http, HttpResponse } from 'msw'
 import { hub } from '../mocks/hub'
+import { server } from './setup'
 
 function renderRobot(live: LiveState = { ...initialLive, connected: true }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -52,5 +54,28 @@ describe('Send the robot', () => {
   it('shows a stopped move order', async () => {
     renderRobot({ ...initialLive, connected: true, route: { route_id: 'r', stops: ['spot-living-3', 'spot-bed-2'], reached: 1, state: 'cancelled', reason: 'emergency stop' } })
     expect(await screen.findByText(/Stopped on the way \(emergency stop\)\. 1 of 2 reached\./)).toBeInTheDocument()
+  })
+})
+
+describe('Send the robot without a map (GET /map still proposed)', () => {
+  const noMap = () => server.use(http.get('/api/map', () => HttpResponse.json({ code: 'not_found', message: 'No such route' }, { status: 404 })))
+
+  it('FR-09: picks places from a list and sends the same move order', async () => {
+    noMap()
+    renderRobot()
+    const places = await screen.findByRole('list', { name: 'Places' })
+    await userEvent.click(await within(places).findByRole('button', { name: /Floor lamp/ }))
+    await userEvent.click(within(places).getByRole('button', { name: /Air purifier/ }))
+    expect(within(screen.getByRole('list', { name: 'Stops' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Floor lamp', 'Air purifier'])
+    await userEvent.click(screen.getByRole('button', { name: 'Go: 2 stops' }))
+    expect(await screen.findByText('No place picked.')).toBeInTheDocument()
+    expect(hub.state.routes).toBe(1)
+  })
+
+  it('C-08: a device without a Verified switch cannot be picked', async () => {
+    noMap()
+    renderRobot()
+    const places = await screen.findByRole('list', { name: 'Places' })
+    expect(await within(places).findByRole('button', { name: /Desk lamp.*no Verified switch/ })).toBeDisabled()
   })
 })

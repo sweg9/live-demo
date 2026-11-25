@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api, unwrap } from '../api/client'
+import { api, ApiError, unwrap } from '../api/client'
 import { proposed } from '../api/extra'
 import { buildScene } from './model'
 
@@ -15,9 +15,12 @@ export function useScene() {
     () => (layout.data && controls.data && devices.data && mappings.data ? buildScene(layout.data, controls.data, devices.data, mappings.data) : undefined),
     [layout.data, controls.data, devices.data, mappings.data],
   )
+  const error = layout.error ?? controls.error ?? devices.error ?? mappings.error
   return {
     scene,
+    /** True when the server has no map yet (GET /map is still proposed): pages show what they can without it. */
+    noMap: layout.error instanceof ApiError && layout.error.status === 404,
     mappings: mappings.data ?? [],
-    error: layout.error ?? controls.error ?? devices.error ?? mappings.error,
+    error,
   }
 }

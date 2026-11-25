@@ -91,7 +91,7 @@ export function NowPage() {
               label="The robot and its route on the home map"
             />
           ) : (
-            <p className="muted">{map.error ? `Could not load the map: ${map.error.message}` : 'Loading the map…'}</p>
+            <p className="muted">{map.noMap ? 'The home map is not set up yet.' : map.error ? `Could not load the map: ${map.error.message}` : 'Loading the map…'}</p>
           )}
           <p className="muted small">The robot's camera stays at home: no video leaves the home (C-05).</p>
         </article>

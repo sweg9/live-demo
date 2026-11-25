@@ -4,14 +4,15 @@ import { api, unwrap, type Run } from '../api/client'
 // GET /runs, shared by every screen under one query key. The live socket invalidates it on each
 // run.result, so lists and badges follow the hub.
 
-const LIMIT = 100 // the newest runs a screen shows; not a product value
+/** The newest runs a screen reads; the stats are computed from these (until GET /stats exists). */
+export const RUNS_LIMIT = 100 // a screen limit, not a product value
 const OPEN: Run['result'][] = ['failure', 'unsure', 'cancelled']
 
 /** C-09: a failed, unsure or cancelled run waits for the resident until `resolution` is set. */
 export const isOpenFailure = (r: Run) => OPEN.includes(r.result) && r.resolution == null
 
 export function useRuns() {
-  const q = useQuery({ queryKey: ['runs'], queryFn: () => unwrap(api.GET('/runs', { params: { query: { limit: LIMIT } } })) })
+  const q = useQuery({ queryKey: ['runs'], queryFn: () => unwrap(api.GET('/runs', { params: { query: { limit: RUNS_LIMIT } } })) })
   const list = q.data ?? []
   return { ...q, list, byId: new Map(list.map((r) => [r.run_id, r])) }
 }

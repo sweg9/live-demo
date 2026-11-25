@@ -342,3 +342,9 @@ tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
   .map-switch { top: 8px; left: 8px; right: 8px; overflow-x: auto; }
   .map-switch button { padding: 4px 10px; }
 }
+
+/* Send the robot without a map: places as a list */
+.place-list { list-style: none; padding: 8px; display: grid; gap: 6px; }
+.place-list button { width: 100%; text-align: left; display: flex; gap: 8px; align-items: center; }
+.place-list button[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, white); }
+.place-list button:disabled { opacity: 0.55; }
