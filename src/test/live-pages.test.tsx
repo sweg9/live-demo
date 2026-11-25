@@ -34,7 +34,7 @@ describe('FR-05, FR-07 Situation → run', () => {
   })
 
   it('shows the wireless result of each device', async () => {
-    const afterWireless = firstIndex((e) => e.kind === 'robot.plan')
+    const afterWireless = firstIndex((e) => e.kind === 'visits')
     await renderAt('/flow', upTo(afterWireless))
     const table = screen.getByLabelText('Wireless results')
     expect(await within(table).findByText('Ceiling light')).toBeInTheDocument()
@@ -57,36 +57,39 @@ describe('FR-05, FR-07 Situation → run', () => {
 
 describe('Situation → run, before the visit plan arrives', () => {
   it('says it is planning, not that nothing is left', async () => {
-    const lastWireless = events.findLastIndex((e) => e.kind === 'run.progress' && e.data.step === 'wireless')
-    await renderAt('/flow', upTo(lastWireless + 1)) // every wireless result in, robot.plan not yet
+    const wirelessDone = firstIndex((e) => e.kind === 'situation' && e.data.status === 'running' && e.data.plan.every((i) => i.wireless.result !== 'pending'))
+    const firstVisits = firstIndex((e) => e.kind === 'visits')
+    expect(wirelessDone).toBeLessThan(firstVisits)
+    await renderAt('/flow', upTo(firstVisits)) // every wireless result in, the visit list not yet
     expect(screen.getByText('Planning the visits…')).toBeInTheDocument()
     expect(screen.queryByText('Nothing left for the robot.')).toBeNull()
   })
 })
 
 describe('Now', () => {
-  it('the robot card never shows an older step than its run', async () => {
-    // At every point of the scenario where the robot is busy, the card shows the run's step.
-    events.forEach((e, i) => {
-      if (e.kind !== 'robot.status' || e.data.state !== 'busy') return
-      const s = upTo(i + 1)
-      const run = Object.values(s.runs).find((r) => r.device_id === e.data.device_id && !r.result)!
-      expect(run.steps.at(-1)?.step, `event ${i}`).not.toBe('queued')
-    })
+  it('the robot card shows the task the hub reports, in plain words', async () => {
+    const gate = firstIndex((e) => e.kind === 'robot' && e.data.task?.step === 'gate')
+    await renderAt('/', upTo(gate + 1))
+    const card = within(screen.getByLabelText('Robot'))
+    expect(card.getByText('Safety check')).toBeInTheDocument()
+    expect(card.getByText(/Safety gate: no person in the work area/)).toBeInTheDocument()
   })
 
-  it('the robot card follows the step of the run it works on', async () => {
-    const gate = firstIndex((e) => e.kind === 'run.progress' && e.data.step === 'gate')
-    await renderAt('/', upTo(gate + 1)) // robot.status still says move; the run is at the gate
-    expect(within(screen.getByLabelText('Robot')).getByText('Safety check')).toBeInTheDocument()
+  it('reads a situation as it was after a reload (snapshot), not only from events', async () => {
+    const end = upTo(events.length)
+    await renderAt('/', { ...initialLive, connected: true, situations: end.situations, robot: end.robot, visits: end.visits })
+    expect(screen.getAllByText('It is 23:00: the bedtime routine started.')[0]).toBeInTheDocument()
+    expect(screen.getByText('Finished (4)')).toBeInTheDocument()
   })
 
   it('shows the situation, the robot and the finished runs', async () => {
     await renderAt('/', upTo(events.length))
-    expect(screen.getByText('It is 23:00: the bedtime routine started.')).toBeInTheDocument()
+    expect(screen.getAllByText('It is 23:00: the bedtime routine started.')[0]).toBeInTheDocument()
     expect(within(screen.getByLabelText('Robot')).getByText('Idle')).toBeInTheDocument()
     expect(screen.getByText('Finished (4)')).toBeInTheDocument()
-    expect(screen.getByText(/did not press/)).toBeInTheDocument() // the high-risk notification
+    // C-03: the high-risk run is in the list and in a notification
+    const notes = screen.getByRole('heading', { name: 'Notifications' }).parentElement!.nextElementSibling as HTMLElement
+    expect(within(notes).getByText(/did not switch off the heater/)).toBeInTheDocument()
   })
 
   it('C-05: shows no camera stream', async () => {

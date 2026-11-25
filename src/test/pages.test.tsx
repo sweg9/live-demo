@@ -75,6 +75,7 @@ describe('FR-08 failures (C-09)', () => {
     expect(await screen.findByText(/could not tell whether the desk lamp/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(3)
     expect(hub.state.runs.some((r) => r.resolution)).toBe(false)
+    expect(hub.state.active.size).toBe(0)
     expect(hub.timers).toHaveLength(0) // nothing was started on its own
   })
 
@@ -83,14 +84,14 @@ describe('FR-08 failures (C-09)', () => {
     await userEvent.click(within(await row(/Wi-Fi did not answer/)).getByRole('button', { name: 'Leave it' }))
     expect(await screen.findByText(/Left as it is/)).toBeInTheDocument()
     await waitFor(() => expect(screen.queryByText(/Wi-Fi did not answer/)).toBeNull())
-    expect(hub.state.runs.find((r) => r.run_id === 'run-1')?.resolution).toBe('left')
+    expect(hub.state.runs.find((r) => r.run_id === 'run-1')?.resolution).toEqual({ choice: 'leave', retry_run_id: null })
   })
 
   it('Try again starts a new run only when asked', async () => {
     renderAt('/failures')
     await userEvent.click(within(await row(/someone was near the power strip/)).getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText(/Trying again/)).toBeInTheDocument()
-    expect(hub.state.runs.find((r) => r.run_id === 'run-3')?.resolution).toBe('retried')
+    expect(hub.state.runs.find((r) => r.run_id === 'run-3')?.resolution).toMatchObject({ choice: 'retry' })
     expect(hub.timers.length).toBeGreaterThan(0)
   })
 

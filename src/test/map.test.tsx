@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
 import { HomeMap } from '../map/HomeMap'
-import { buildScene, highlighted, robotPoint, routeOf } from '../map/model'
+import { buildScene, highlighted, robotPoint, visitStops } from '../map/model'
 import { controls, devices, mappings } from '../mocks/fixtures'
 import { layout } from '../mocks/layout'
 
@@ -38,21 +38,18 @@ describe('map model', () => {
     expect(highlighted(scene, null).size).toBe(0)
   })
 
-  it('puts the robot at the press spot of the Verified control, else at the dock', () => {
-    expect(robotPoint(scene, mappings, { state: 'busy', device_id: 'dev-floor' })).toEqual(spot('ctl-living-3'))
-    expect(robotPoint(scene, mappings, { state: 'idle' })).toEqual(layout.dock)
-    // The desk lamp's mapping is Stale: the robot never goes there for it (C-08)
-    expect(robotPoint(scene, mappings, { state: 'busy', device_id: 'dev-desk' })).toEqual(layout.dock)
+  it('puts the robot at the last spot it reported, else at the dock', () => {
+    expect(robotPoint(scene, { spot_id: 'spot-living-3' })).toEqual(spot('ctl-living-3'))
+    expect(robotPoint(scene, { spot_id: 'dock' })).toEqual(layout.dock)
+    expect(robotPoint(scene, { spot_id: 'somewhere-new' })).toEqual(layout.dock)
   })
 
-  it('numbers the visits and marks the done ones', () => {
-    const visits = [
-      { device_id: 'dev-floor', run_id: 'a', why: 'no_wireless' as const },
-      { device_id: 'dev-purifier', run_id: 'b', why: 'wireless_failed' as const },
-    ]
-    expect(routeOf(scene, mappings, visits, (id) => id === 'a')).toEqual([
-      { n: 1, at: spot('ctl-living-3'), deviceId: 'dev-floor', done: true },
-      { n: 2, at: spot('ctl-bed-2'), deviceId: 'dev-purifier', done: false },
+  it('numbers the visits by order and marks the finished ones', () => {
+    const visit = (order: number, spot_id: string, status: 'done' | 'waiting') =>
+      ({ visit_id: `v${order}`, order, situation_id: 's', spot_id, control_id: null, device_id: 'd', run_id: null, reason: 'no_channel' as const, status })
+    expect(visitStops(scene, [visit(2, 'spot-bed-2', 'waiting'), visit(1, 'spot-living-3', 'done')])).toEqual([
+      { n: 1, at: spot('ctl-living-3'), key: 'v1', done: true },
+      { n: 2, at: spot('ctl-bed-2'), key: 'v2', done: false },
     ])
   })
 })

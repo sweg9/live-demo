@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
 import { LiveStateProvider } from '../live/LiveProvider'
-import { initialLive, type LiveState } from '../live/live'
+import { IDLE_ROBOT, initialLive, type LiveState } from '../live/live'
 import { hub } from '../mocks/hub'
 
 function renderRobot(live: LiveState = { ...initialLive, connected: true }) {
@@ -42,14 +42,15 @@ describe('Send the robot', () => {
   })
 
   it('cannot send while the robot is busy', async () => {
-    renderRobot({ ...initialLive, connected: true, robot: { state: 'busy', step: 'press', device_id: 'dev-floor' } })
+    const task = { run_id: 'r', device_id: 'dev-floor', stage: 'S6' as const, step: 'press' as const, text: 'press', method: 'press' as const, channel: 'ARM' as const }
+    renderRobot({ ...initialLive, connected: true, robot: { ...IDLE_ROBOT, state: 'pressing', task } })
     await userEvent.click(within(await map()).getByRole('button', { name: 'Air purifier, Room B' }))
     expect(screen.getByRole('button', { name: 'Go here' })).toBeDisabled()
-    expect(screen.getByText(/The robot is busy: Pressing/)).toBeInTheDocument()
+    expect(screen.getByText(/The robot is busy: Press/)).toBeInTheDocument()
   })
 
   it('shows a stopped move order', async () => {
-    renderRobot({ ...initialLive, connected: true, route: { route_id: 'r', stops: ['dev-floor', 'dev-purifier'], reached: 1, state: 'cancelled', reason: 'emergency stop' } })
+    renderRobot({ ...initialLive, connected: true, route: { route_id: 'r', stops: ['spot-living-3', 'spot-bed-2'], reached: 1, state: 'cancelled', reason: 'emergency stop' } })
     expect(await screen.findByText(/Stopped on the way \(emergency stop\)\. 1 of 2 reached\./)).toBeInTheDocument()
   })
 })
