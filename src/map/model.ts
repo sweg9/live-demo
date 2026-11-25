@@ -1,5 +1,5 @@
 import type { Control, Device, Mapping, MappingStatus } from '../api/client'
-import type { HomeLayout, Point, Visit } from '../api/proposed'
+import { DOCK, type HomeLayout, type Point, type Robot, type Visit } from '../api/proposed'
 
 // What the map draws, worked out from the layout and the API lists. No drawing here, so the
 // same model can feed the 2D plan now and the 3D map later.
@@ -8,7 +8,7 @@ export type MapControl = { id: string; kind: Control['kind']; at: Point; pressSp
 export type MapDevice = { id: string; name: string; type: string; risk: Device['risk']; room: string; at: Point }
 export type MapLink = { id: string; control: string; device: string; from: Point; to: Point; status: MappingStatus; verified: boolean }
 export type Selection = { kind: 'control' | 'device'; id: string } | null
-export type Stop = { n: number; at: Point; deviceId: string; done: boolean }
+export type Stop = { n: number; at: Point; key: string; done: boolean }
 
 export type Scene = {
   rooms: HomeLayout['rooms']
@@ -16,6 +16,8 @@ export type Scene = {
   devices: MapDevice[]
   links: MapLink[]
   dock: Point
+  /** Press spots and the dock by spot id, where the robot stands. */
+  spots: Record<string, Point>
   size: { w: number; h: number }
   /** For drawing only; empty when the map has no plan yet. */
   walls: NonNullable<HomeLayout['walls']>
@@ -64,6 +66,7 @@ export function buildScene(layout: HomeLayout, controls: Control[], devices: Dev
   const ys = [...layout.rooms.flatMap((r) => [r.y, r.y + r.h]), ...walls.flatMap((w) => [w[1], w[3]])]
   return {
     rooms: layout.rooms, controls: mapControls, devices: mapDevices, links, dock: layout.dock,
+    spots: Object.fromEntries([[DOCK, layout.dock], ...layout.controls.map((c) => [c.spot_id, c.press_spot])]),
     size: { w: Math.max(...xs), h: Math.max(...ys) },
     origin: { x: Math.min(...xs), y: Math.min(...ys) },
     walls, furniture: layout.furniture ?? [], ceiling: layout.ceiling ?? 240,
@@ -83,26 +86,36 @@ export function pressSpotFor(scene: Scene, mappings: Mapping[], deviceId: string
   return m ? scene.controls.find((c) => c.id === m.control_id)?.pressSpot : undefined
 }
 
-/**
- * Where to draw the robot: at the spot of the device it works on or last went to (a move order
- * or a stop leaves it there), else at the dock.
- */
-export function robotPoint(scene: Scene, mappings: Mapping[], robot: { state: string; device_id?: string }): Point {
-  return (robot.device_id && pressSpotFor(scene, mappings, robot.device_id)) || scene.dock
+/** The floor point of a spot id as the hub names it (Robot.spot_id, Visit.spot_id). */
+export const spotPoint = (scene: Scene, spotId: string): Point | undefined => scene.spots[spotId]
+
+/** Where to draw the robot: at the last spot it reached (the hub reports it), else at the dock. */
+export function robotPoint(scene: Scene, robot: Pick<Robot, 'spot_id'>): Point {
+  return spotPoint(scene, robot.spot_id) ?? scene.dock
 }
 
-/** A move order as numbered stops; the ones already reached are marked done. */
-export function routeStops(scene: Scene, mappings: Mapping[], route: { stops: string[]; reached: number }): Stop[] {
-  return route.stops.flatMap((id, i) => {
+/** Devices picked for a move order, as numbered stops at their Verified press spots (C-08). */
+export function deviceStops(scene: Scene, mappings: Mapping[], deviceIds: string[]): Stop[] {
+  return deviceIds.flatMap((id, i) => {
     const at = pressSpotFor(scene, mappings, id)
-    return at ? [{ n: i + 1, at, deviceId: id, done: i < route.reached }] : []
+    return at ? [{ n: i + 1, at, key: id, done: false }] : []
   })
 }
 
-/** The visit list as numbered stops on the floor. */
-export function routeOf(scene: Scene, mappings: Mapping[], visits: Visit[], isDone: (runId: string) => boolean): Stop[] {
-  return visits.flatMap((v, i) => {
-    const at = pressSpotFor(scene, mappings, v.device_id)
-    return at ? [{ n: i + 1, at, deviceId: v.device_id, done: isDone(v.run_id) }] : []
+/** Spots still ahead (Robot.plan), as numbered stops. */
+export function spotStops(scene: Scene, spotIds: string[]): Stop[] {
+  return spotIds.flatMap((id, i) => {
+    const at = spotPoint(scene, id)
+    return at ? [{ n: i + 1, at, key: `${i}-${id}`, done: false }] : []
   })
+}
+
+/** The visit list as numbered stops on the floor; finished visits are marked done. */
+export function visitStops(scene: Scene, visits: Visit[]): Stop[] {
+  return [...visits]
+    .sort((a, b) => a.order - b.order)
+    .flatMap((v, i) => {
+      const at = spotPoint(scene, v.spot_id)
+      return at ? [{ n: i + 1, at, key: v.visit_id, done: v.status === 'done' || v.status === 'failed' || v.status === 'cancelled' }] : []
+    })
 }

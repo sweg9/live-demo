@@ -67,12 +67,12 @@ export const layout: HomeLayout = {
   ],
   ceiling: 249,
   controls: [
-    { control_id: 'ctl-living-1', at: { x: 244, y: 520 }, press_spot: { x: 210, y: 565 } },
-    { control_id: 'ctl-living-2', at: { x: 146, y: 520 }, press_spot: { x: 180, y: 565 } },
-    { control_id: 'ctl-living-3', at: { x: 200, y: 832 }, press_spot: { x: 195, y: 775 } },
-    { control_id: 'ctl-bed-1', at: { x: 557, y: 785 }, press_spot: { x: 515, y: 785 } },
-    { control_id: 'ctl-bed-strip', at: { x: 495, y: 832 }, press_spot: { x: 495, y: 775 } },
-    { control_id: 'ctl-bed-2', at: { x: 474, y: 520 }, press_spot: { x: 505, y: 565 } },
+    { control_id: 'ctl-living-1', at: { x: 244, y: 520 }, press_spot: { x: 210, y: 565 }, spot_id: 'spot-living-1' },
+    { control_id: 'ctl-living-2', at: { x: 146, y: 520 }, press_spot: { x: 180, y: 565 }, spot_id: 'spot-living-2' },
+    { control_id: 'ctl-living-3', at: { x: 200, y: 832 }, press_spot: { x: 195, y: 775 }, spot_id: 'spot-living-3' },
+    { control_id: 'ctl-bed-1', at: { x: 557, y: 785 }, press_spot: { x: 515, y: 785 }, spot_id: 'spot-bed-1' },
+    { control_id: 'ctl-bed-strip', at: { x: 495, y: 832 }, press_spot: { x: 495, y: 775 }, spot_id: 'spot-bed-strip' },
+    { control_id: 'ctl-bed-2', at: { x: 474, y: 520 }, press_spot: { x: 505, y: 565 }, spot_id: 'spot-bed-2' },
   ],
   devices: [
     { device_id: 'dev-ceiling', at: { x: 195, y: 676 } },
