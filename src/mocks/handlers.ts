@@ -3,8 +3,8 @@ import * as fx from './fixtures'
 import { hub } from './hub'
 import { layout } from './layout'
 
-// Browser mock of api/backend-server.yaml, plus the routes proposed in api/proposed.ts (marked
-// PROPOSED). Same paths and shapes as the real server, so turning the mock off (VITE_MOCK=off)
+// Browser mock of api/backend-server.yaml (0.5.0), plus GET /map, which is still PROPOSED
+// (docs/proposed-api.md). Same paths and shapes as the real server, so turning the mock off (VITE_MOCK=off)
 // is the only change needed to use it. The records and the live events live in mocks/hub.ts.
 
 export const REPLAY = 'replay'
@@ -65,17 +65,30 @@ export const handlers = [
   })),
   http.get('/api/map', signedIn(() => HttpResponse.json(layout))), // PROPOSED
 
+  // Situations, visits and the robot (0.4.0)
+  http.get('/api/situations', signedIn(() =>
+    HttpResponse.json([...hub.state.situations.values()].sort((a, b) => b.received_at.localeCompare(a.received_at)).slice(0, 50)),
+  )),
+  http.get<{ id: string }>('/api/situations/:id', signedIn(({ params }) => {
+    const sit = hub.state.situations.get(params.id)
+    return sit ? HttpResponse.json(sit) : HttpResponse.json({ code: 'not_found', message: 'Unknown id' }, { status: 404 })
+  })),
+  http.post<{ id: string }>('/api/situations/:id/approve', signedIn(({ params }) => reply(hub.answer(params.id, true)))),
+  http.post<{ id: string }>('/api/situations/:id/dismiss', signedIn(({ params }) => reply(hub.answer(params.id, false)))),
+  http.get('/api/visits', signedIn(() => HttpResponse.json(hub.state.visits))),
+  http.get('/api/robot', signedIn(() => HttpResponse.json(hub.state.robot))),
+
   // Mappings
   http.post<{ id: string }>('/api/mappings/:id/confirm', signedIn(({ params }) => setStatus(params.id, 'Verified'))),
   http.post<{ id: string }>('/api/mappings/:id/reject', signedIn(({ params }) => setStatus(params.id, 'Rejected'))),
 
-  // Runs: what the resident chooses after a failure (PROPOSED, C-09)
+  // Runs: what the resident chooses after a failure (C-09)
   http.post<{ id: string }>('/api/runs/:id/retry', signedIn(({ params }) => reply(hub.retry(params.id)))),
   http.post<{ id: string }>('/api/runs/:id/leave', signedIn(({ params }) => reply(hub.leave(params.id)))),
 
-  // Robot move order (PROPOSED)
+  // Move order
   http.post('/api/robot/route', signedIn(async ({ request }) => {
-    const { stops } = (await request.json()) as { stops: string[] }
+    const { stops } = (await request.json()) as { stops: unknown }
     return reply(hub.route(stops))
   })),
 
@@ -85,7 +98,7 @@ export const handlers = [
     hub.stop()
     return HttpResponse.json({ ral: 'stopped' })
   })),
-  http.get('/api/proactive', signedIn(() => HttpResponse.json({ paused: hub.state.paused }))), // PROPOSED
+  http.get('/api/proactive', signedIn(() => HttpResponse.json({ paused: hub.state.paused }))),
   http.put('/api/proactive', signedIn(async ({ request }) => {
     const body = (await request.json()) as { paused: boolean }
     hub.state.paused = body.paused

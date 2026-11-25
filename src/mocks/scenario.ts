@@ -1,151 +1,415 @@
 import type { Run } from '../api/client'
-import type { Channel, LiveEvent, RunProgress, Situation } from '../api/proposed'
-import { devices } from './fixtures'
+import {
+  DOCK,
+  type Channel,
+  type LiveEvent,
+  type Notification,
+  type PlanItem,
+  type Robot,
+  type RobotRoute,
+  type RunProgress,
+  type Situation,
+  type Step,
+  type Visit,
+} from '../api/proposed'
+import { IDLE_ROBOT } from '../live/live'
+import { devices, mappings } from './fixtures'
+import { layout } from './layout'
 
-// Live events the mock plays with delays (its stand-in for the hub). Tests in
-// src/test/scenario.test.ts hold every scenario to C-03, C-04, C-08 and C-09.
+// Live events the mock plays with delays: its stand-in for the hub. Same kinds, shapes, texts
+// and order as backend-server's orchestrator (src/backend/hub/orchestrator.py, spec 0.5.0): a
+// situation grows its plan, wireless goes first, then the visit list, then the robot visits and
+// presses, then it goes back to the dock. A run's run.progress comes before the robot event of
+// the same step. Tests in src/test/scenario.test.ts hold every scenario to C-03, C-04, C-08 and
+// C-09.
 //
 // The bedtime scenario shows every path the dashboard must handle:
 //   Ceiling light  WIFI works                                   → success (S5)
 //   Floor lamp     no wireless channel → press, check yes       → success (S6)
-//   Air purifier   IR fails → press, check unsure twice         → unsure, never pressed again (C-09)
+//   Air purifier   IR fails → press, unsure, one more look      → unsure, never pressed again (C-09)
 //   Heater         no wireless → safety gate fails              → cancelled (C-04), notified (C-03)
 
 export type Timed = { delayMs: number; event: LiveEvent }
 
 const STEP_MS = 900 // pacing of the demo only, not a product value
+const MOVE_MS = 1500
+
+export const EMERGENCY = 'emergency stop'
+export const PERSON = 'a person was in the work area'
 
 export type Plan = {
   key: string
   device_id: string
-  mapping_id: string
-  intent: string
-  wireless: { channel: Channel; works: boolean } | null
+  action: 'on' | 'off'
+  decision?: PlanItem['decision'] // act unless said
+  routine?: boolean
+  wireless: { channel: Exclude<Channel, 'ARM'>; works: boolean } | null
   gate?: 'pass' | 'fail'
+  /** The camera's answers: the first, and the one more look after an unsure (FR-08). */
   checks?: Array<'yes' | 'no' | 'unsure'>
 }
 
 const BEDTIME: Plan[] = [
-  { key: 'ceiling', device_id: 'dev-ceiling', mapping_id: 'map-1', intent: 'Turn off the ceiling light', wireless: { channel: 'WIFI', works: true } },
-  { key: 'floor', device_id: 'dev-floor', mapping_id: 'map-5', intent: 'Turn off the floor lamp', wireless: null, gate: 'pass', checks: ['yes'] },
-  { key: 'purifier', device_id: 'dev-purifier', mapping_id: 'map-6', intent: 'Turn off the air purifier', wireless: { channel: 'IR', works: false }, gate: 'pass', checks: ['unsure', 'unsure'] },
-  { key: 'heater', device_id: 'dev-heater', mapping_id: 'map-4', intent: 'Turn off the heater', wireless: null, gate: 'fail' },
+  { key: 'ceiling', device_id: 'dev-ceiling', action: 'off', routine: true, wireless: { channel: 'WIFI', works: true } },
+  { key: 'floor', device_id: 'dev-floor', action: 'off', wireless: null, gate: 'pass', checks: ['yes'] },
+  { key: 'purifier', device_id: 'dev-purifier', action: 'off', wireless: { channel: 'IR', works: false }, gate: 'pass', checks: ['unsure', 'unsure'] },
+  { key: 'heater', device_id: 'dev-heater', action: 'off', routine: true, wireless: null, gate: 'fail' },
 ]
 
 let played = 0
-const device = (id: string) => devices.find((d) => d.device_id === id)
-const name = (id: string) => device(id)?.name.toLowerCase() ?? id
-const room = (id: string) => device(id)?.room
-const highRiskNote = (p: Plan, result: Run['result']) =>
-  ({
-    success: `The ${name(p.device_id)} was turned off.`,
-    cancelled: `The ${name(p.device_id)} is still on. Someone was near it, so the robot did not press.`,
-    unsure: `The robot pressed the ${name(p.device_id)} switch, but could not confirm it is off. Please check it.`,
-    failure: `The ${name(p.device_id)} could not be turned off. Please check it.`,
-  })[result]
-const label = (c: Channel) =>({ IR: 'IR', WIFI: 'Wi-Fi', BT: 'Bluetooth', ARM: 'a press' })[c]
+const device = (id: string) => devices.find((d) => d.device_id === id)!
+const lower = (id: string) => device(id).name.toLowerCase()
+const verified = (deviceId: string) => mappings.find((m) => m.device_id === deviceId && m.status === 'Verified')
+export const controlOf = (deviceId: string) => layout.controls.find((c) => c.control_id === verified(deviceId)?.control_id)
+const CHANNEL_WORDS: Record<Channel, string> = { IR: 'IR', WIFI: 'Wi-Fi', BT: 'Bluetooth', ARM: 'pressing its switch' }
 
-type Situate = Omit<Situation, 'situation_id' | 'at'> & { runTrigger: Run['trigger']; routines: boolean }
+type Outcome = Pick<RunProgress, 'wireless' | 'gate' | 'answer' | 'reason'>
+type Open = { item: PlanItem; plan: Plan; retryOf: string | null }
 
-/** One situation and its runs: wireless first for every device (S5), then the robot (S6). */
-export function playRuns(situation: Situate, plans: Plan[], now = () => new Date()): Timed[] {
-  const n = ++played
-  const sid = `sit-${n}`
-  const runId = (p: Plan) => `run-${n}-${p.key}`
-  const out: Timed[] = []
-  const emit = (event: LiveEvent, delayMs = STEP_MS) => out.push({ delayMs, event })
-  const progress = (p: Plan, d: Omit<RunProgress, 'run_id' | 'situation_id' | 'device_id'>) =>
-    emit({ kind: 'run.progress', data: { run_id: runId(p), situation_id: sid, device_id: p.device_id, ...d } })
-  const result = (p: Plan, r: Pick<Run, 'result' | 'channel' | 'explanation'> & { reason?: string }) => {
-    emit({
+/** Builds a timed list of events and keeps the robot as the hub would. */
+class Player {
+  out: Timed[] = []
+  robot: Robot
+  visits: Visit[] = []
+  constructor(
+    readonly now: () => Date,
+    from: Robot,
+    readonly sit: Situation | null,
+    readonly trigger: Run['trigger'],
+  ) {
+    this.robot = structuredClone(from)
+  }
+
+  emit(event: LiveEvent, delayMs = STEP_MS) {
+    this.out.push({ delayMs, event: structuredClone(event) })
+  }
+  notify(n: Omit<Notification, 'at'>, delayMs = 200) {
+    this.emit({ kind: 'notification', data: { ...n, at: this.now().toISOString() } }, delayMs)
+  }
+  emitRobot(delayMs = 100) {
+    this.emit({ kind: 'robot', data: this.robot }, delayMs)
+  }
+  emitVisits(delayMs = 100) {
+    this.emit({ kind: 'visits', data: { visits: this.visits } }, delayMs)
+  }
+  emitSit(delayMs = STEP_MS) {
+    if (this.sit) this.emit({ kind: 'situation', data: this.sit }, delayMs)
+  }
+  /** The hub's progress: one run.progress. */
+  progress(r: Open, step: Step, text: string, stage: RunProgress['stage'], channel: Channel | null = null, outcome: Outcome = {}) {
+    const method = channel === null ? null : channel === 'ARM' ? 'press' : 'wireless'
+    this.emit({
+      kind: 'run.progress',
+      data: { run_id: r.item.run_id!, situation_id: this.sit?.situation_id ?? null, device_id: r.item.device_id, stage, step, text, method, channel, ...outcome },
+    })
+  }
+  /** The hub's set_task: the run's progress first, then the robot with the same task. */
+  task(r: Open | null, step: Step, text: string, stage: RunProgress['stage'] | null = null, channel: Channel | null = null) {
+    const method = channel === null ? null : channel === 'ARM' ? 'press' : 'wireless'
+    this.robot.task = { run_id: r?.item.run_id ?? null, device_id: r?.item.device_id ?? null, stage, step, text, method, channel }
+    if (r && stage) this.progress(r, step, text, stage, channel)
+    this.emitRobot()
+  }
+  moveTo(spot: string) {
+    if (this.robot.spot_id === spot) return
+    this.robot.state = 'moving'
+    this.robot.ral.state = 'busy'
+    this.emitRobot()
+    this.robot.spot_id = spot
+    this.emitRobot(MOVE_MS)
+  }
+  idle() {
+    this.robot.task = null
+    this.robot.plan = []
+    this.robot.state = 'idle'
+    this.robot.ral.state = 'idle'
+  }
+  goHome() {
+    this.robot.task = null
+    this.robot.plan = []
+    this.moveTo(DOCK)
+    this.idle()
+    this.emitRobot()
+  }
+
+  /** The hub's close: the plan item, the situation, run.result, then the notification (C-03, C-09). */
+  close(r: Open, result: Run['result'], reason?: string) {
+    const { item } = r
+    if (result !== 'success' && !reason) reason = { failure: 'the check saw no change', unsure: 'the check could not tell' }[result as string] ?? EMERGENCY
+    const channel: Channel | undefined = result === 'cancelled' && reason !== EMERGENCY ? undefined : item.method === 'press' ? 'ARM' : item.wireless.channel ?? undefined
+    const name = lower(item.device_id)
+    const how = channel ? ` by ${CHANNEL_WORDS[channel]}` : ''
+    const asked = r.retryOf ? ' because you asked me to try again' : ''
+    const explanation = {
+      success: `I switched ${item.action} the ${name}${how}${asked}. Checked: it worked.`,
+      failure: `I tried to switch ${item.action} the ${name}${how}${asked}. Checked: it did not work (${reason}).`,
+      unsure: `I tried to switch ${item.action} the ${name}${how}${asked}. Checked: I could not tell if it worked (${reason}). I did not press again.`,
+      cancelled: `I did not switch ${item.action} the ${name}: ${reason}. Nothing was changed.`,
+    }[result]
+    item.result = result
+    item.reason = result === 'success' ? null : reason!
+    this.emitSit(100)
+    const sid = this.sit?.situation_id ?? null
+    this.emit({
       kind: 'run.result',
       data: {
-        run_id: runId(p), situation_id: sid, trigger: situation.runTrigger, intent: p.intent, device_id: p.device_id,
-        confidence: 0.9, started_at: now().toISOString(), ...r,
+        run_id: item.run_id!, trigger: this.trigger, situation_id: sid, intent: `turn ${item.action} the ${name}`, device_id: item.device_id,
+        confidence: item.confidence, channel, result, reason: item.reason ?? undefined, explanation,
+        started_at: this.now().toISOString(), resolution: null, retry_of: r.retryOf,
       },
-    })
-    // C-03: a high-risk device gets a notification on every run, whatever the result.
-    if (device(p.device_id)?.risk === 'high') emit({ kind: 'notification', data: { text: highRiskNote(p, r.result) } }, 200)
-  }
-
-  emit({ kind: 'situation', data: { situation_id: sid, trigger: situation.trigger, summary: situation.summary, at: now().toISOString() } }, 300)
-  if (situation.routines) {
-    for (const p of plans) {
-      emit({ kind: 'routine', data: { routine_id: `rt-${n}-${p.key}`, situation_id: sid, mapping_id: p.mapping_id, action: 'off', time: '23:00', source: 'habit', independence: 'act_and_tell', priority: 1 } }, 400)
+    }, 100)
+    const about = { run_id: item.run_id!, device_id: item.device_id, situation_id: sid }
+    if (result === 'failure' || result === 'unsure') {
+      this.notify({ level: 'warning', topic: 'run_failed', message: explanation, choices: ['retry', 'leave'], ...about })
+    } else if (item.risk === 'high') {
+      this.notify({ level: result === 'cancelled' ? 'warning' : 'info', topic: 'high_risk_run', message: explanation, ...about })
     }
   }
-  for (const p of plans) progress(p, { stage: 'S4', step: 'decide' })
 
-  // S5: wireless first, for every device (C-09)
-  const visits: Plan[] = []
-  for (const p of plans) {
-    if (!p.wireless) {
-      progress(p, { stage: 'S5', step: 'wireless', wireless: 'no_wireless' })
-      visits.push(p)
-      continue
+  /** The hub's press_visit: drive, safety gate, press, camera check, one more look if unsure. */
+  pressVisit(v: Visit, r: Open) {
+    const status = (s: Visit['status']) => {
+      v.status = s
+      this.emitVisits()
     }
-    const { channel, works } = p.wireless
-    progress(p, { stage: 'S5', step: 'check', channel, answer: works ? 'yes' : 'no' })
-    progress(p, { stage: 'S5', step: 'wireless', channel, wireless: works ? 'success' : 'failure' })
-    if (works) result(p, { result: 'success', channel, explanation: `The ${name(p.device_id)} was turned off over ${label(channel)}.` })
-    else visits.push(p)
-  }
-
-  // S6: the robot visits what is left, in order, started by the system
-  if (visits.length) {
-    emit({ kind: 'robot.plan', data: { situation_id: sid, visits: visits.map((p) => ({ device_id: p.device_id, run_id: runId(p), why: p.wireless ? 'wireless_failed' : 'no_wireless' })) } })
-    for (const p of visits) progress(p, { stage: 'S6', step: 'queued' })
-  }
-
-  for (const p of visits) {
-    // The run moves on first, then the robot reports it: the robot card never shows a step
-    // older than the run's own.
-    progress(p, { stage: 'S6', step: 'move' })
-    emit({ kind: 'robot.status', data: { state: 'busy', device_id: p.device_id, step: 'move', room: room(p.device_id) } }, 100)
-    progress(p, { stage: 'S6', step: 'gate', gate: p.gate, reason: p.gate === 'fail' ? 'person_in_work_area' : undefined })
-    if (p.gate === 'fail') {
-      result(p, { result: 'cancelled', channel: 'ARM', reason: 'person_in_work_area', explanation: `The ${name(p.device_id)} was not pressed because someone was near it. Nothing was tried again.` })
-      continue
+    status('moving')
+    this.task(r, 'move', 'drive to the switch', 'S6', 'ARM')
+    this.moveTo(v.spot_id)
+    if (this.robot.plan[0] === v.spot_id) this.robot.plan.shift()
+    status('pressing')
+    this.robot.state = 'pressing'
+    this.task(r, 'gate', 'safety gate: no person in the work area', 'S6', 'ARM')
+    const ok = r.plan.gate !== 'fail'
+    this.progress(r, 'gate', ok ? 'safety gate passed' : `safety gate failed: ${PERSON}`, 'S6', 'ARM', { gate: ok ? 'pass' : 'fail', reason: ok ? null : PERSON })
+    if (!ok) {
+      // C-04: no press
+      this.close(r, 'cancelled', PERSON)
+      status('cancelled')
+      return
     }
-    emit({ kind: 'robot.status', data: { state: 'busy', device_id: p.device_id, step: 'press', room: room(p.device_id) } })
-    progress(p, { stage: 'S6', step: 'press', channel: 'ARM' })
-    for (const answer of p.checks ?? []) progress(p, { stage: 'S6', step: 'check', channel: 'ARM', answer })
-    const why = p.wireless ? `${label(p.wireless.channel)} did not work` : 'it has no wireless channel'
-    if (p.checks?.at(-1) === 'yes') result(p, { result: 'success', channel: 'ARM', explanation: `The robot pressed the ${name(p.device_id)} switch because ${why}. Checked: it is off.` })
-    else result(p, { result: 'unsure', channel: 'ARM', explanation: `The robot pressed the ${name(p.device_id)} switch, but the camera could not tell whether it turned off. Nothing was pressed again.` })
+    this.task(r, 'press', 'press', 'S6', 'ARM')
+    this.robot.state = 'checking'
+    status('checking')
+    this.task(r, 'check', 'check the effect with the camera', 'S6', 'ARM')
+    const [first = 'yes', again = 'unsure'] = r.plan.checks ?? []
+    let answer = first
+    const unclear = `the camera could not tell whether the ${lower(r.item.device_id)} changed`
+    if (answer === 'unsure') {
+      // FR-08, C-09: one more look, never another press
+      this.progress(r, 'check', 'unsure', 'S6', 'ARM', { answer, reason: unclear })
+      this.task(r, 'check', 'unsure: look once more without pressing again', 'S6', 'ARM')
+      answer = again
+    }
+    const why = answer === 'yes' ? undefined : answer === 'no' ? 'the check saw no change' : unclear
+    this.progress(r, 'check', { yes: 'it worked', no: 'it did not work', unsure: 'still unsure' }[answer], 'S6', 'ARM', { answer, reason: why ?? null })
+    const result = answer === 'yes' ? 'success' : answer === 'no' ? 'failure' : 'unsure'
+    this.close(r, result, why)
+    status(result === 'success' ? 'done' : 'failed')
   }
-  emit({ kind: 'robot.status', data: { state: 'idle' } })
-  return out
+
+  visitFor(r: Open, n: number, k: number, reason: Visit['reason']): Visit {
+    const c = controlOf(r.item.device_id)!
+    return {
+      visit_id: `vis-${n}-${r.plan.key}`, order: k + 1, situation_id: this.sit?.situation_id ?? null, spot_id: c.spot_id,
+      control_id: c.control_id, device_id: r.item.device_id, run_id: r.item.run_id!, reason, status: 'waiting',
+    }
+  }
 }
 
-export function bedtimeScenario(now = () => new Date()): Timed[] {
-  return playRuns({ trigger: 'time', runTrigger: 'time', summary: 'It is 23:00: the bedtime routine started.', routines: true }, BEDTIME, now)
+function planItem(plan: Plan): PlanItem {
+  const d = device(plan.device_id)
+  const m = verified(plan.device_id)!
+  return {
+    device_id: d.device_id, name: d.name, room: d.room, risk: d.risk, mapping_id: m.mapping_id,
+    routine_id: plan.routine ? `rt-${plan.key}` : null, action: plan.action, decision: plan.decision ?? 'act',
+    confidence: m.confidence, method: plan.wireless ? 'wireless' : 'press',
+    wireless: plan.wireless ? { channel: plan.wireless.channel, result: 'pending', reason: null } : { channel: null, result: 'no_channel', reason: null },
+    run_id: null, result: null, reason: null, resolution: null,
+  }
+}
+
+const settled = (sit: Situation) => sit.plan.every((i) => i.result === null || i.result === 'success' || i.resolution === 'leave')
+
+export type Played = {
+  events: Timed[]
+  situationId: string
+  /** Set while the situation waits for the resident's answer (FR-06): the rest of the play. */
+  answer?: (yes: boolean) => Timed[]
+}
+
+/** One situation: the plan, device by device; wireless first (S5); then the robot (S6). */
+export function playSituation(
+  s: { kind: string; trigger: Situation['trigger']; summary: string },
+  plans: Plan[],
+  now = () => new Date(),
+  from: Robot = IDLE_ROBOT,
+): Played {
+  const n = ++played
+  const sit: Situation = { situation_id: `sit-${n}`, kind: s.kind, trigger: s.trigger, summary: s.summary, received_at: now().toISOString(), status: 'received', plan: [] }
+  const p = new Player(now, from, sit, s.trigger)
+  const sid = sit.situation_id
+
+  p.emitSit(300)
+  p.notify({ level: 'info', topic: 'situation', message: s.summary, situation_id: sid }, 50)
+  sit.status = 'planning'
+  p.emitSit()
+  for (const plan of plans) {
+    sit.plan.push(planItem(plan))
+    p.emitSit(400)
+  }
+  if (sit.plan.every((i) => i.decision === 'suggest')) {
+    sit.status = 'suggested'
+    p.emitSit()
+    p.notify({ level: 'info', topic: 'suggestion', message: `I only suggest this time: ${s.summary}`, situation_id: sid })
+    return { events: p.out, situationId: sid }
+  }
+  if (sit.plan.some((i) => i.decision === 'ask')) {
+    sit.status = 'waiting_for_answer'
+    p.emitSit()
+    p.notify({ level: 'info', topic: 'question', message: `Shall I go ahead? ${s.summary}`, situation_id: sid, choices: ['approve', 'dismiss'] })
+    return {
+      events: p.out,
+      situationId: sid,
+      answer: (yes) => {
+        p.out = []
+        if (!yes) {
+          sit.status = 'dismissed'
+          p.emitSit(100)
+          return p.out
+        }
+        sit.plan.forEach((i) => i.decision === 'ask' && (i.decision = 'act'))
+        run(p, plans, n)
+        return p.out
+      },
+    }
+  }
+  run(p, plans, n)
+  return { events: p.out, situationId: sid }
+}
+
+function run(p: Player, plans: Plan[], n: number) {
+  const sit = p.sit!
+  sit.status = 'running'
+  const open: Open[] = sit.plan.flatMap((item, k) => (item.decision === 'act' ? [{ item, plan: plans[k], retryOf: null }] : []))
+  open.forEach((r) => (r.item.run_id = `run-${n}-${r.plan.key}`))
+  p.emitSit()
+  for (const r of open) p.progress(r, 'decide', 'decided to act', 'S4')
+
+  // S5: wireless first, in the order of the plan (C-09)
+  for (const r of open) {
+    const w = r.plan.wireless
+    if (!w) continue
+    p.task(r, 'wireless', `send over ${w.channel}`, 'S5', w.channel)
+    const why = w.works ? null : `no answer over ${w.channel}`
+    r.item.wireless.result = w.works ? 'success' : 'failure'
+    p.progress(r, 'wireless', `${w.channel}: ${w.works ? 'it worked' : 'it did not work'}`, 'S5', w.channel, {
+      wireless: r.item.wireless.result, answer: w.works ? 'yes' : 'no', reason: why,
+    })
+    if (w.works) {
+      p.close(r, 'success')
+    } else {
+      r.item.wireless.reason = why
+      r.item.method = 'press'
+      p.emitSit()
+    }
+  }
+
+  // S6: the visit list for what wireless could not do, then the robot goes on its own
+  const todo = open.filter((r) => r.item.result === null)
+  if (todo.length) {
+    todo.forEach((r, k) => {
+      const none = r.item.wireless.result === 'no_channel'
+      if (none) p.progress(r, 'wireless', 'no wireless channel', 'S5', null, { wireless: 'no_channel' })
+      p.visits.push(p.visitFor(r, n, k, none ? 'no_channel' : 'wireless_failed'))
+      p.progress(r, 'queued', 'waits for the robot', 'S6', 'ARM')
+    })
+    p.robot.plan = p.visits.map((v) => v.spot_id)
+    p.emitVisits(STEP_MS)
+    p.emitRobot()
+    for (const v of p.visits) p.pressVisit(v, todo.find((r) => r.item.run_id === v.run_id)!)
+    p.goHome()
+  }
+  sit.status = settled(sit) ? 'done' : 'needs_attention'
+  p.emitSit()
+}
+
+export function bedtimeScenario(now = () => new Date(), from: Robot = IDLE_ROBOT): Timed[] {
+  return playSituation({ kind: 'bedtime', trigger: 'time', summary: 'It is 23:00: the bedtime routine started.' }, BEDTIME, now, from).events
+}
+
+/** A bedtime that asks first (FR-06): the heater is high risk, so the hub waits for an answer. */
+export function askingScenario(now = () => new Date(), from: Robot = IDLE_ROBOT): Played {
+  const plans = BEDTIME.map((x) => (x.key === 'heater' ? { ...x, decision: 'ask' as const, gate: 'pass' as const, checks: ['yes' as const] } : x))
+  return playSituation({ kind: 'bedtime', trigger: 'time', summary: 'It is 23:00: the bedtime routine started.' }, plans, now, from)
+}
+
+/** The new run's id for a retry, so the answer can name it before the play starts. */
+export const retryRunId = () => `run-${++played}-retry`
+
+/**
+ * Try again, asked by the resident (C-09: never on its own). Like the hub: a new run with the
+ * same trigger and `retry_of`, a visit "requested", a press after a new safety gate. In the demo
+ * it works. `sit` is the situation the run came from, if any: its plan item takes the new run.
+ */
+export function retryScenario(run: Run, newRunId: string, sit: Situation | null, now = () => new Date(), from: Robot = IDLE_ROBOT): Timed[] {
+  const copy = sit ? structuredClone(sit) : null
+  const p = new Player(now, from, copy, run.trigger)
+  const plan: Plan = { key: 'retry', device_id: run.device_id!, action: run.intent?.includes(' on ') ? 'on' : 'off', wireless: null, gate: 'pass', checks: ['yes'] }
+  let item = copy?.plan.find((i) => i.run_id === run.run_id)
+  if (copy && item) {
+    Object.assign(item, { run_id: newRunId, result: null, reason: null, resolution: 'retry', method: 'press' })
+    copy.status = 'running'
+    p.emitSit(200)
+  } else {
+    item = { ...planItem(plan), run_id: newRunId, method: 'press' }
+  }
+  const r: Open = { item, plan, retryOf: run.run_id }
+  p.progress(r, 'decide', 'you asked to try again', 'S4')
+  const v = p.visitFor(r, 0, 0, 'requested')
+  v.visit_id = `vis-${newRunId}`
+  p.visits = [v]
+  p.robot.plan = [v.spot_id]
+  p.emitVisits(200)
+  p.progress(r, 'queued', 'waits for the robot', 'S6', 'ARM')
+  p.pressVisit(v, r)
+  p.goHome()
+  if (copy) {
+    copy.status = settled(copy) ? 'done' : 'needs_attention'
+    p.emitSit()
+  }
+  return p.out
 }
 
 /**
- * Try again, asked by the resident (C-09: never on its own). Same intent, same order: wireless
- * first if the device has a channel, then a press after a new safety gate. In the demo it works.
+ * A move order (POST /robot/route): the safety gate before every leg, then the move (C-04).
+ * Nothing is pressed. `gateFails` is the index of a stop whose way is blocked, for tests.
  */
-export function retryScenario(run: Run, mappingId: string, now = () => new Date()): Timed[] {
-  const wireless = device(run.device_id ?? '')?.channels?.find((c) => c !== 'ARM')
-  const plan: Plan = {
-    key: 'retry', device_id: run.device_id!, mapping_id: mappingId, intent: run.intent ?? `Operate the ${name(run.device_id!)}`,
-    wireless: wireless ? { channel: wireless, works: false } : null, gate: 'pass', checks: ['yes'],
+export function routeScenario(routeId: string, spots: string[], now = () => new Date(), from: Robot = IDLE_ROBOT, gateFails = -1): Timed[] {
+  const p = new Player(now, from, null, 'routine')
+  const order: RobotRoute = { route_id: routeId, stops: [...spots], reached: 0, state: 'moving', reason: null }
+  const emitRoute = (delayMs = 100) => p.emit({ kind: 'robot.route', data: order }, delayMs)
+  emitRoute(200)
+  p.robot.plan = [...spots]
+  for (const [k, spot] of spots.entries()) {
+    p.task(null, 'gate', `safety gate: nobody on the way to ${spot}`)
+    if (k === gateFails) {
+      order.state = 'cancelled'
+      order.reason = `safety gate failed: ${PERSON}`
+      p.idle()
+      emitRoute()
+      p.emitRobot()
+      p.notify({ level: 'warning', topic: 'route_cancelled', message: `I did not move: ${PERSON}.`, route_id: routeId })
+      return p.out
+    }
+    p.task(null, 'move', `go to ${spot}`)
+    p.moveTo(spot)
+    if (p.robot.plan[0] === spot) p.robot.plan.shift()
+    order.reached++
+    emitRoute()
   }
-  return playRuns({ trigger: 'resident', runTrigger: run.trigger, summary: `You asked to try again: ${plan.intent.toLowerCase()}.`, routines: false }, [plan], now)
-}
-
-/** A move order: the safety gate, then the move, for each stop. Nothing is pressed. */
-export function routeScenario(routeId: string, stops: string[]): Timed[] {
-  const out: Timed[] = []
-  const emit = (event: LiveEvent, delayMs = STEP_MS) => out.push({ delayMs, event })
-  emit({ kind: 'robot.route', data: { route_id: routeId, stops, reached: 0, state: 'moving' } }, 200)
-  stops.forEach((id, i) => {
-    emit({ kind: 'robot.status', data: { state: 'busy', device_id: id, step: 'gate', room: room(id) } })
-    emit({ kind: 'robot.status', data: { state: 'busy', device_id: id, step: 'move', room: room(id) } })
-    emit({ kind: 'robot.route', data: { route_id: routeId, stops, reached: i + 1, state: i + 1 === stops.length ? 'done' : 'moving' } }, 1500)
-  })
-  const last = stops.at(-1)
-  emit({ kind: 'robot.status', data: { state: 'idle', device_id: last, room: last ? room(last) : undefined } })
-  return out
+  order.state = 'done'
+  p.idle()
+  emitRoute()
+  p.emitRobot()
+  return p.out
 }
