@@ -29,6 +29,7 @@ npm run build
 | Mappings: by room and on the map; confirm or reject | Built. Change device and new check wait on API routes; the map waits on `GET /map` | FR-02, C-08 |
 | Send the robot: ordered stops on the map | Built (`POST /robot/route`, `robot.route`) | C-04, C-08 |
 | History & stats | Built from `GET /runs` | FR-12, C-07 |
+| Routines: keep, change the time, remove, and how independently each acts | Built (`POST /routines/{id}/feedback`) | FR-04, FR-06, C-06, C-03 |
 
 - No live camera view: video never leaves the home (C-05).
 

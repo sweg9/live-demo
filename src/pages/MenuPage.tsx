@@ -17,6 +17,10 @@ const GROUPS: Array<{ title: string; items: Array<{ to: string; label: string; i
       { to: '/robot', label: 'Send the robot', icon: 'robot' },
     ],
   },
+  {
+    title: 'Your home',
+    items: [{ to: '/routines', label: 'Routines', icon: 'flow' }],
+  },
 ]
 
 export function MenuPage() {

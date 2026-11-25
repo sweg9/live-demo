@@ -21,6 +21,7 @@ type Reply = { status: number; body?: unknown }
 function fresh() {
   return {
     mappings: structuredClone(fx.mappings),
+    routines: structuredClone(fx.routines),
     runs: structuredClone(fx.runs) as Run[], // with the resident's choice in `resolution`, like the hub
     situations: new Map<string, Situation>(),
     visits: [] as Visit[],
@@ -206,6 +207,19 @@ export const hub = {
     const route_id = `route-${++this.state.routes}`
     this.play(routeScenario(route_id, spots, undefined, this.state.robot))
     return { status: 202, body: { route_id, stops: spots } }
+  },
+
+  /** POST /routines/{id}/feedback: keep, change (time, independence) or remove (C-06, FR-04). */
+  feedback(routineId: string, body: { decision?: string; time?: string; independence?: string }): Reply {
+    const s = this.state
+    const r = s.routines.find((x) => x.routine_id === routineId)
+    if (!r) return err(404, 'not_found', 'Unknown id')
+    if (body.decision === 'remove') s.routines = s.routines.filter((x) => x !== r)
+    else if (body.decision === 'change') {
+      if (body.time) r.time = body.time
+      if (body.independence) r.independence = body.independence as typeof r.independence
+    } else if (body.decision !== 'keep') return err(422, 'invalid', 'decision is keep, change or remove')
+    return { status: 200, body: r }
   },
 
   login(password: string): Reply {

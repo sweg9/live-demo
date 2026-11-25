@@ -57,7 +57,8 @@ export const handlers = [
   http.get('/api/controls', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.controls)))),
   http.get('/api/devices', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.devices)))),
   http.get('/api/mappings', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(hub.state.mappings)))),
-  http.get('/api/routines', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(fx.routines)))),
+  http.get('/api/routines', signedIn(async () => (await delay(LATENCY_MS), HttpResponse.json(hub.state.routines)))),
+  http.post<{ id: string }>('/api/routines/:id/feedback', signedIn(async ({ params, request }) => reply(hub.feedback(params.id, (await request.json()) as object)))),
   http.get('/api/runs', signedIn(async ({ request }) => {
     await delay(LATENCY_MS)
     const limit = Number(new URL(request.url).searchParams.get('limit') ?? hub.state.runs.length)

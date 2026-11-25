@@ -102,3 +102,35 @@ describe('FR-08 failures (C-09)', () => {
     expect(hub.timers).toHaveLength(0)
   })
 })
+
+describe('FR-04, FR-06 routines (C-06)', () => {
+  const routine = async (name: RegExp) => (await screen.findByRole('listitem', { name })) as HTMLElement
+
+  it('lists each routine with its device and how much it may do alone', async () => {
+    renderAt('/routines')
+    const row = await routine(/Routine: Ceiling light/)
+    expect(within(row).getByRole('combobox')).toHaveValue('act_and_tell')
+    expect(within(await routine(/Routine: Heater/)).getByText(/never turned on without asking/)).toBeInTheDocument() // C-03
+  })
+
+  it('changes how independently a routine acts', async () => {
+    renderAt('/routines')
+    const row = await routine(/Routine: Ceiling light/)
+    await userEvent.selectOptions(within(row).getByRole('combobox'), 'ask_first')
+    await userEvent.click(within(row).getByRole('button', { name: 'Save change' }))
+    expect(await screen.findByText('Changed.')).toBeInTheDocument()
+    expect(hub.state.routines.find((r) => r.routine_id === 'rt-1')?.independence).toBe('ask_first')
+  })
+
+  it('removes a routine only after the resident confirms', async () => {
+    renderAt('/routines')
+    const row = await routine(/Routine: Ceiling light/)
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove' }))
+    expect(hub.state.routines).toHaveLength(2)
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove' }))
+    await waitFor(() => expect(screen.queryByRole('listitem', { name: /Routine: Ceiling light/ })).toBeNull())
+    expect(hub.state.routines.map((r) => r.routine_id)).toEqual(['rt-2'])
+    confirm.mockRestore()
+  })
+})
