@@ -67,10 +67,16 @@ export type RobotStatus = {
  */
 export type Point = { x: number; y: number }
 export type HomeLayout = {
-  rooms: Array<{ room: string; x: number; y: number; w: number; h: number }>
+  rooms: Array<{ room: string; x: number; y: number; w: number; h: number; label?: boolean }>
   controls: Array<{ control_id: string; at: Point; press_spot: Point }>
   devices: Array<{ device_id: string; at: Point }>
   dock: Point // where the robot waits
+  /** Optional, for drawing: straight walls [x1, y1, x2, y2, thickness]; gaps are doors. */
+  walls?: Array<[number, number, number, number, number]>
+  /** Optional, for drawing: furniture as boxes; `h` is the height in cm. */
+  furniture?: Array<{ kind: 'bed' | 'desk' | 'wardrobe' | 'shelf'; x: number; y: number; w: number; d: number; h: number }>
+  /** Optional: ceiling height in cm. */
+  ceiling?: number
 }
 
 /**

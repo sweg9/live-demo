@@ -14,7 +14,7 @@ The dashboard already uses these shapes. The browser mock (`src/mocks/`) answers
 | `GET /runs` field `resolution` | `retried` or `left`, absent until the resident chooses | The Failures list shows only open runs; History shows the choice | C-07 |
 | `POST /robot/route` `{stops: [device_id]}` | `202 {route_id}`. `409` while the robot is busy or a stop has no `Verified` mapping | Send the robot: "go here", "stop here, then go there". Nothing is pressed | C-04 (gate before every leg), C-08 |
 | `GET /proactive` | `{paused}`, the same as `PUT /proactive` saves | Today the app cannot show whether automation is paused until the resident presses a button | C-06 |
-| `GET /map` | `HomeLayout`: rooms, control and device positions with press spots, dock (cm, y down) | Map on Now, Mappings and Send the robot | Owned by the map work; no photos in it (C-05) |
+| `GET /map` | `HomeLayout`: rooms, control and device positions with press spots, dock (cm, y down); optionally straight `walls`, `furniture` boxes and `ceiling` for drawing the 2D plan and the 3D model | Map on Home, Devices and Send the robot | Owned by the map work; numbers only, no photos (C-05) |
 
 ## Live events on `/api/ws/app`
 
@@ -54,10 +54,12 @@ Order matters in one place: send a run's `run.progress` before the `robot.status
 
 ## Map coordinates (for the map owner)
 
-The rooms in `src/mocks/layout.ts` come from the LiDAR scan of 2026-11-24. To turn a point (x, y) of that scan (metres, z up) into dashboard coordinates (cm, y down), with a = 34.25°:
+The rooms in `src/mocks/layout.ts` come from the LiDAR scan of 2026-11-24. To turn a point (x, y) of that scan (metres, z up) into dashboard coordinates (cm, y down, seen from above, not mirrored), with a = 34.25°:
 
 ```
-X = 100 · (x·cos a − y·sin a + 2.514)
-Y = 100 · (x·sin a + y·cos a + 0.906)
+X = 100 · (x·cos a − y·sin a + 2.5139)
+Y = 100 · (7.6875 − x·sin a − y·cos a)
 ```
+
+The 3D view uses the same frame in metres: (X/100, height above the floor, Y/100), with the floor at scan z = −1.2989. `tools/scan-to-glb.mjs` bakes this into the GLB, so a point marked on the scan lands on the same spot in 2D and 3D.
  Controls, devices and the dock in the mock are estimates until they are marked on the scan.

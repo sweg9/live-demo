@@ -17,6 +17,11 @@ export type Scene = {
   links: MapLink[]
   dock: Point
   size: { w: number; h: number }
+  /** For drawing only; empty when the map has no plan yet. */
+  walls: NonNullable<HomeLayout['walls']>
+  furniture: NonNullable<HomeLayout['furniture']>
+  ceiling: number
+  origin: Point // top-left of everything drawn
 }
 
 const KIND_LABEL: Record<Control['kind'], string> = { switch: 'Switch', toggle: 'Toggle', power_strip: 'Power strip' }
@@ -54,9 +59,15 @@ export function buildScene(layout: HomeLayout, controls: Control[], devices: Dev
     return d ? [{ id: d.device_id, name: d.name, type: d.type, risk: d.risk, room: d.room, at: p.at }] : []
   })
 
-  const w = Math.max(...layout.rooms.map((r) => r.x + r.w))
-  const h = Math.max(...layout.rooms.map((r) => r.y + r.h))
-  return { rooms: layout.rooms, controls: mapControls, devices: mapDevices, links, dock: layout.dock, size: { w, h } }
+  const walls = layout.walls ?? []
+  const xs = [...layout.rooms.flatMap((r) => [r.x, r.x + r.w]), ...walls.flatMap((w) => [w[0], w[2]])]
+  const ys = [...layout.rooms.flatMap((r) => [r.y, r.y + r.h]), ...walls.flatMap((w) => [w[1], w[3]])]
+  return {
+    rooms: layout.rooms, controls: mapControls, devices: mapDevices, links, dock: layout.dock,
+    size: { w: Math.max(...xs), h: Math.max(...ys) },
+    origin: { x: Math.min(...xs), y: Math.min(...ys) },
+    walls, furniture: layout.furniture ?? [], ceiling: layout.ceiling ?? 240,
+  }
 }
 
 /** Ids to highlight for a selection: the item, its links and what they connect to. */

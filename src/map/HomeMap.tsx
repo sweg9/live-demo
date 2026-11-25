@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import type { Point } from '../api/proposed'
 import { highlighted, type Scene, type Selection, type Stop } from './model'
+import { Plan2D } from './Plan2D'
 
 // The home as a 2D floor plan. It takes a Scene (map/model.ts), so a 3D map can replace the
 // drawing later without changing the pages that use it.
@@ -34,19 +35,19 @@ export function HomeMap({ scene, selection = null, onSelect, robot, route = [], 
   const path = robot && remaining.length ? [robot, ...remaining.map((s) => s.at)] : []
 
   return (
-    <svg className="home-map" viewBox={`${-PAD} ${-PAD} ${scene.size.w + PAD * 2} ${scene.size.h + PAD * 2}`} role="img" aria-label={label}>
+    <svg
+      className="home-map"
+      viewBox={`${scene.origin.x - PAD} ${scene.origin.y - PAD} ${scene.size.w - scene.origin.x + PAD * 2} ${scene.size.h - scene.origin.y + PAD * 2}`}
+      role="img"
+      aria-label={label}
+    >
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 z" className="route-head" />
         </marker>
       </defs>
 
-      {scene.rooms.map((r) => (
-        <g key={r.room}>
-          <rect className="room" x={r.x} y={r.y} width={r.w} height={r.h} />
-          <text className="room-label" x={r.x + 14} y={r.y + 28}>{r.room}</text>
-        </g>
-      ))}
+      <Plan2D scene={scene} />
 
       {path.length > 1 &&
         path.slice(1).map((p, i) => (
