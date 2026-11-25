@@ -1,28 +1,25 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, unwrap } from '../api/client'
-import { proposed } from '../api/extra'
-import type { RunWithResolution } from '../api/proposed'
 import { useDevices } from '../api/hooks'
+import { isOpenFailure, useRuns } from '../live/runs'
 
 // C-09: a failed, unsure or cancelled run waits for the resident: Try again or Leave it.
-// The system never presses again on its own. A run leaves this list once the resident chose.
-
-const OPEN: RunWithResolution['result'][] = ['failure', 'unsure', 'cancelled']
+// The system never presses again on its own. A run leaves this list once the hub keeps the
+// resident's choice in its `resolution`.
 
 export function FailuresPage() {
   const qc = useQueryClient()
   const devices = useDevices()
-  const runs = useQuery({
-    queryKey: ['runs'],
-    queryFn: () => unwrap(api.GET('/runs', { params: { query: { limit: 100 } } })) as Promise<RunWithResolution[]>,
-  })
+  const runs = useRuns()
   const [notice, setNotice] = useState<{ runId: string; text: string; ok: boolean } | null>(null)
 
   const choose = useMutation({
-    mutationFn: ({ runId, verb }: { runId: string; verb: 'retry' | 'leave' }): Promise<unknown> =>
-      verb === 'retry' ? proposed.retry(runId) : proposed.leave(runId),
+    mutationFn: ({ runId, verb }: { runId: string; verb: 'retry' | 'leave' }) => {
+      const path = { params: { path: { run_id: runId } } }
+      return unwrap(verb === 'retry' ? api.POST('/runs/{run_id}/retry', path) : api.POST('/runs/{run_id}/leave', path))
+    },
     onSuccess: (_d, { runId, verb }) =>
       setNotice({ runId, ok: true, text: verb === 'retry' ? 'Trying again.' : 'Left as it is. It stays in History.' }),
     onError: (e, { runId }) => setNotice({ runId, ok: false, text: e instanceof ApiError ? e.message : 'It could not be sent.' }),
@@ -32,14 +29,14 @@ export function FailuresPage() {
   if (runs.isPending) return <p>Loading…</p>
   if (runs.isError) return <p className="error">Could not load runs: {runs.error.message}</p>
 
-  const open = runs.data.filter((r) => OPEN.includes(r.result) && !r.resolution)
+  const open = runs.list.filter(isOpenFailure)
 
   return (
     <section>
       <p className="muted">Nothing here is tried again on its own. Choose for each one.</p>
       {notice?.ok && (
         <p role="status" className="ok">
-          {notice.text} {notice.text.startsWith('Trying') && <Link to="/">Follow it on Now</Link>}
+          {notice.text} {notice.text.startsWith('Trying') && <Link to="/">Follow it on Home</Link>}
         </p>
       )}
       {open.length === 0 && <p className="muted">Nothing is waiting for you.</p>}

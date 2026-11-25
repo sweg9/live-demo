@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap, type Device } from '../api/client'
-import type { RunWithResolution } from '../api/proposed'
 import { failureReasons, frequentDevices, successRates, verifiedShare, type Ranked } from './stats'
 
 // FR-12, C-07: every run in plain language, and simple stats computed from the same list.
@@ -36,14 +35,16 @@ export function HistoryPage() {
       <h2>Runs</h2>
       <ul className="runs">
         {runs.data.map((r) => (
-          <li key={r.run_id} className={`run ${r.result}`}>
+          <li key={r.run_id} id={`run-${r.run_id}`} className={`run ${r.result}`}>
             <span className="badge">{r.result}</span>
             <span className="when">{new Date(r.started_at).toLocaleString()}</span>
             <span className="what">
               {r.explanation ?? r.intent ?? r.run_id}
-              {(r as RunWithResolution).resolution && (
-                <span className="badge">{(r as RunWithResolution).resolution === 'retried' ? 'you tried again' : 'you left it'}</span>
+              {r.resolution?.choice === 'leave' && <span className="badge">you left it</span>}
+              {r.resolution?.choice === 'retry' && (
+                <a className="badge" href={`#run-${r.resolution.retry_run_id}`}>you tried again</a>
               )}
+              {r.retry_of && <a className="badge" href={`#run-${r.retry_of}`}>a new try of an earlier run</a>}
             </span>
             <span className="meta">
               {r.device_id ? names.get(r.device_id) ?? r.device_id : ''} {r.channel ? `· ${r.channel}` : ''}
