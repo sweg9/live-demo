@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { Icon, type IconName } from '../components/Icon'
-import { useOpenFailures } from '../components/Layout'
+import { useOpenFailures } from '../live/runs'
 import { ProactiveToggle } from '../components/ProactiveToggle'
 import { SignOut } from '../components/SignOut'
 import { useWide } from '../components/useWide'

@@ -1,14 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
-import { proposed } from '../api/extra'
 
 // FR-06, C-06: the resident can pause proactive features from any screen.
-// Shows the state, and only the action that changes it. The state comes from GET /proactive
-// (PROPOSED); while it is unknown, both actions are offered.
+// Shows the state, and only the action that changes it. The state comes from GET /proactive;
+// while it is unknown (the hub is offline), both actions are offered.
 
 export function ProactiveToggle() {
   const qc = useQueryClient()
-  const current = useQuery({ queryKey: ['proactive'], queryFn: proposed.proactive, retry: false })
+  const current = useQuery({ queryKey: ['proactive'], queryFn: () => unwrap(api.GET('/proactive')), retry: false })
   const save = useMutation({
     mutationFn: (paused: boolean) => unwrap(api.PUT('/proactive', { body: { paused } })),
     onSuccess: (data) => qc.setQueryData(['proactive'], data),

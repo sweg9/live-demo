@@ -1,33 +1,32 @@
 import { Link } from 'react-router-dom'
 import { useDevices } from '../api/hooks'
 import { Icon } from '../components/Icon'
-import { useOpenFailures } from '../components/Layout'
+import { useOpenFailures, useRuns } from '../live/runs'
 import { useLive } from '../live/LiveProvider'
-import { currentStep, runsOf } from '../live/live'
-import { STEP_LABEL } from '../live/labels'
+import { acted, visitsOf } from '../live/live'
+import { ROBOT_STATE, SITUATION_STATUS, STEP_LABEL, sentence } from '../live/labels'
 import { LiveBar } from './LiveBar'
+import { Notifications } from './Notifications'
 import { MapView } from '../map/MapView'
-import { robotPoint, routeOf, routeStops } from '../map/model'
+import { robotPoint, spotStops, visitStops } from '../map/model'
 import { useScene } from '../map/useScene'
 
 // Home: what is happening right now, as cards. Each card leads to the page that tells more.
-
-const ROBOT_STATE = { idle: 'Idle', busy: 'Working', stopped: 'Stopped', error: 'Error: check the robot' } as const
 
 export function NowPage() {
   const live = useLive()
   const devices = useDevices()
   const map = useScene()
+  const runs = useRuns()
   const waiting = useOpenFailures()
   const situation = live.situations[0]
-  const runs = situation ? runsOf(live, situation.situation_id) : []
-  const active = runs.filter((r) => !r.result)
-  const finished = runs.filter((r) => r.result)
+  const items = situation ? acted(situation) : []
+  const active = items.filter((i) => !i.result)
+  const finished = items.filter((i) => i.result)
   const robot = live.robot
-  // robot.status arrives only when the robot starts a visit or a press; the run's own steps are
-  // finer (gate, check), so the robot card follows the run it is working on.
-  const robotRun = robot.state === 'busy' ? active.find((r) => r.device_id === robot.device_id) : undefined
-  const robotStep = robotRun ? currentStep(robotRun) : robot.step
+  const task = robot.task
+  const visits = situation ? visitsOf(live, situation.situation_id) : []
+  const tone = robot.state === 'stopped' || robot.ral.state === 'error' ? 'tone-red' : robot.state === 'idle' && !task ? 'tone-gray' : 'tone-green'
 
   return (
     <section className="home">
@@ -41,25 +40,28 @@ export function NowPage() {
             {situation ? (
               <>
                 <p className="lead">{situation.summary}</p>
-                <p className="muted small">{new Date(situation.at).toLocaleTimeString()} · trigger: {situation.trigger}</p>
+                <p className="muted small">
+                  {new Date(situation.received_at).toLocaleTimeString()} · {SITUATION_STATUS[situation.status]}
+                </p>
               </>
             ) : (
               <p className="lead muted">Waiting for a situation.</p>
             )}
-            <Link className="pill" to="/flow">See the flow</Link>
+            <Link className="pill" to="/flow">{situation?.status === 'waiting_for_answer' ? 'Answer' : 'See the flow'}</Link>
           </div>
         </article>
 
         <article className="card feature" aria-label="Robot">
-          <span className={`bubble ${robot.state === 'stopped' || robot.state === 'error' ? 'tone-red' : robot.state === 'busy' ? 'tone-green' : 'tone-gray'}`}>
+          <span className={`bubble ${tone}`}>
             <Icon name="robot" size={26} />
           </span>
           <div>
             <h2 className="eyebrow">Robot</h2>
-            <p className="lead">{robot.state === 'busy' && robotStep ? STEP_LABEL[robotStep] : ROBOT_STATE[robot.state]}</p>
-            {robot.device_id && (
+            <p className="lead">{robot.ral.state === 'error' ? 'Error: check the robot' : task?.step ? STEP_LABEL[task.step] : ROBOT_STATE[robot.state]}</p>
+            {task?.text && (
               <p className="muted small">
-                {devices.name(robot.device_id)} · {robot.room} · physical press (ARM)
+                {sentence(task.text)}
+                {task.device_id && ` · ${devices.name(task.device_id)}`}
               </p>
             )}
             <Link className="pill" to="/robot">Send the robot</Link>
@@ -84,14 +86,8 @@ export function NowPage() {
           {map.scene ? (
             <MapView
               scene={map.scene}
-              robot={robotPoint(map.scene, map.mappings, robot)}
-              route={
-                live.route?.state === 'moving'
-                  ? routeStops(map.scene, map.mappings, live.route)
-                  : situation
-                    ? routeOf(map.scene, map.mappings, live.plans[situation.situation_id] ?? [], (id) => !!live.runs[id]?.result)
-                    : []
-              }
+              robot={robotPoint(map.scene, robot)}
+              route={visits.some((v) => !['done', 'failed', 'cancelled'].includes(v.status)) ? visitStops(map.scene, visits) : spotStops(map.scene, robot.plan)}
               label="The robot and its route on the home map"
             />
           ) : (
@@ -108,14 +104,14 @@ export function NowPage() {
         <p className="empty">Nothing is running.</p>
       ) : (
         <ul className="tiles">
-          {active.map((r) => {
-            const last = r.steps.at(-1)
+          {active.map((i) => {
+            const last = live.runs[i.run_id]?.steps.at(-1)
             return (
-              <li key={r.run_id} className="tile">
+              <li key={i.run_id} className="tile">
                 <span className="chip">{last?.stage ?? 'S4'}</span>
-                <strong>{devices.name(r.device_id)}</strong>
-                <span>{STEP_LABEL[currentStep(r)]}</span>
-                {last?.channel && <span className="muted small">{last.channel}</span>}
+                <strong>{i.name ?? devices.name(i.device_id)}</strong>
+                <span>{last ? STEP_LABEL[last.step] : 'Waiting'}</span>
+                {(last?.channel ?? i.wireless.channel) && <span className="muted small">{last?.channel ?? i.wireless.channel}</span>}
               </li>
             )
           })}
@@ -127,27 +123,23 @@ export function NowPage() {
       </div>
       {finished.length > 0 && (
         <ul className="list-card results">
-          {finished.map((r) => (
-            <li key={r.run_id} className={`result ${r.result!.result}`}>
-              <span className={`status-dot ${r.result!.result}`} aria-hidden="true" />
-              <div>
-                <strong>{devices.name(r.device_id)}</strong> <span className="badge">{r.result!.result}</span>
-                <p>{r.result!.explanation}</p>
-              </div>
-              <span className="muted small">{r.result!.channel}</span>
-            </li>
-          ))}
+          {finished.map((i) => {
+            const run = live.runs[i.run_id]?.result ?? runs.byId.get(i.run_id)
+            return (
+              <li key={i.run_id} className={`result ${i.result}`}>
+                <span className={`status-dot ${i.result}`} aria-hidden="true" />
+                <div>
+                  <strong>{i.name ?? devices.name(i.device_id)}</strong> <span className="badge">{i.result}</span>
+                  <p>{run?.explanation ?? i.reason}</p>
+                </div>
+                <span className="muted small">{run?.channel}</span>
+              </li>
+            )
+          })}
         </ul>
       )}
 
-      {live.notifications.length > 0 && (
-        <>
-          <div className="section-head">
-            <h2>Notifications</h2>
-          </div>
-          <ul className="list-card notes">{live.notifications.map((n, i) => <li key={i}>{n}</li>)}</ul>
-        </>
-      )}
+      <Notifications />
     </section>
   )
 }

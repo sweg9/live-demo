@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { api, unwrap } from '../api/client'
-import type { RunWithResolution } from '../api/proposed'
 import { useLive } from '../live/LiveProvider'
+import { useOpenFailures } from '../live/runs'
+import { NoteText } from '../pages/Notifications'
 import { EmergencyStop } from './EmergencyStop'
 import { Icon, type IconName } from './Icon'
 import { ProactiveToggle } from './ProactiveToggle'
@@ -27,14 +26,6 @@ export const NAV: readonly Nav[] = [
   { to: '/history', label: 'History & stats', icon: 'activity', tab: true },
   { to: '/menu', label: 'Menu', icon: 'menu', tab: true },
 ]
-
-const OPEN = new Set(['failure', 'unsure', 'cancelled'])
-
-/** Runs waiting for the resident's choice (C-09), for the badges. */
-export function useOpenFailures() {
-  const runs = useQuery({ queryKey: ['runs'], queryFn: () => unwrap(api.GET('/runs', { params: { query: { limit: 100 } } })) })
-  return ((runs.data ?? []) as RunWithResolution[]).filter((r) => OPEN.has(r.result) && !r.resolution).length
-}
 
 export function Layout() {
   const { pathname } = useLocation()
@@ -122,7 +113,7 @@ function Notifications() {
               <Icon name="close" size={18} />
             </button>
           </div>
-          {notifications.length === 0 ? <p className="muted">Nothing new.</p> : <ul>{notifications.map((n, i) => <li key={i}>{n}</li>)}</ul>}
+          {notifications.length === 0 ? <p className="muted">Nothing new.</p> : <ul>{notifications.map((n, i) => <li key={i}><NoteText n={n} /></li>)}</ul>}
         </div>
       )}
     </div>
