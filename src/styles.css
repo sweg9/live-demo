@@ -216,8 +216,8 @@ tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .home-map .split { stroke: rgb(0 0 0 / 22%); stroke-width: 1.5; fill: none; }
 .home-map .room-label { fill: var(--muted); font-size: 22px; font-weight: 600; }
 .home-map .link { stroke-width: 3; opacity: 0.75; }
-.home-map .link.confirmed { stroke: var(--accent); }
-.home-map .link.guess { stroke: var(--warn); }
+.home-map .link.verified { stroke: var(--accent); }
+.home-map .link.unverified { stroke: var(--warn); }
 .home-map .link.hl { stroke-width: 6; opacity: 1; }
 .home-map .dim { opacity: 0.2; }
 .home-map .device circle { fill: var(--panel); stroke: var(--accent); stroke-width: 3; }

@@ -97,7 +97,7 @@ export const hub = {
     if (run.resolution) return err(409, 'already_resolved', `You already chose: ${run.resolution}`)
     if (this.state.robot === 'busy') return err(409, 'robot_busy', 'The robot is busy. Try again when it is idle.')
     const mapping = this.state.mappings.find((m) => m.device_id === run.device_id && m.status === 'Verified')
-    if (!mapping) return err(409, 'mapping_not_verified', 'The switch for this device is not confirmed, so the robot cannot use it (C-08)')
+    if (!mapping) return err(409, 'mapping_not_verified', 'The switch for this device is not Verified yet, so the robot cannot use it (C-08)')
     run.resolution = 'retried'
     const events = retryScenario(run as Run, mapping.mapping_id)
     this.play(events)
@@ -119,7 +119,7 @@ export const hub = {
     if (this.state.robot === 'busy') return err(409, 'robot_busy', 'The robot is busy. Try again when it is idle.')
     for (const id of stops) {
       if (!this.state.mappings.some((m) => m.device_id === id && m.status === 'Verified')) {
-        return err(409, 'mapping_not_verified', `No confirmed switch for ${id}, so there is no spot to go to (C-08)`)
+        return err(409, 'mapping_not_verified', `No Verified switch for ${id}, so there is no spot to go to (C-08)`)
       }
     }
     const route_id = `route-${++this.state.routes}`

@@ -6,7 +6,7 @@ import type { HomeLayout, Point, Visit } from '../api/proposed'
 
 export type MapControl = { id: string; kind: Control['kind']; at: Point; pressSpot: Point; room?: string; role: string; caution: boolean }
 export type MapDevice = { id: string; name: string; type: string; risk: Device['risk']; room: string; at: Point }
-export type MapLink = { id: string; control: string; device: string; from: Point; to: Point; status: MappingStatus; confirmed: boolean }
+export type MapLink = { id: string; control: string; device: string; from: Point; to: Point; status: MappingStatus; verified: boolean }
 export type Selection = { kind: 'control' | 'device'; id: string } | null
 export type Stop = { n: number; at: Point; deviceId: string; done: boolean }
 
@@ -40,7 +40,7 @@ export function buildScene(layout: HomeLayout, controls: Control[], devices: Dev
     const from = ctlAt.get(m.control_id)?.at
     const to = m.device_id ? devAt.get(m.device_id) : undefined
     if (!from || !to || !m.device_id || m.status === 'Rejected') return []
-    return [{ id: m.mapping_id, control: m.control_id, device: m.device_id, from, to, status: m.status, confirmed: m.status === 'Verified' }]
+    return [{ id: m.mapping_id, control: m.control_id, device: m.device_id, from, to, status: m.status, verified: m.status === 'Verified' }]
   })
 
   const mapControls: MapControl[] = layout.controls.flatMap((p) => {

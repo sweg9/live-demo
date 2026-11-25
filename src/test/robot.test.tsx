@@ -34,10 +34,10 @@ describe('Send the robot', () => {
     expect(hub.state.routes).toBe(1)
   })
 
-  it('C-08: will not add a device without a confirmed switch', async () => {
+  it('C-08: will not add a device without a Verified switch', async () => {
     renderRobot()
     await userEvent.click(within(await map()).getByRole('button', { name: 'Desk lamp, Room B' })) // Stale mapping
-    expect(screen.getByText(/no confirmed switch yet/)).toBeInTheDocument()
+    expect(screen.getByText(/no Verified switch yet/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Go here' })).toBeDisabled()
   })
 

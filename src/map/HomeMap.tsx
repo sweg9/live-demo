@@ -6,7 +6,7 @@ import { Plan2D } from './Plan2D'
 // The home as a 2D floor plan. It takes a Scene (map/model.ts), so a 3D map can replace the
 // drawing later without changing the pages that use it.
 //
-// Links: solid = Verified, dashed = a guess (Pending or Stale); Rejected links are not drawn.
+// Links: solid = Verified, dashed = Pending or Stale; Rejected links are not drawn.
 // Route: calm arrows on the floor with the visit order.
 
 type Props = {
@@ -58,9 +58,9 @@ export function HomeMap({ scene, selection = null, onSelect, robot, route = [], 
         <line
           key={l.id}
           data-testid={`link-${l.id}`}
-          className={`link ${l.confirmed ? 'confirmed' : 'guess'}${on(l.id)}${dim(l.id)}`}
+          className={`link ${l.verified ? 'verified' : 'unverified'}${on(l.id)}${dim(l.id)}`}
           x1={l.from.x} y1={l.from.y} x2={l.to.x} y2={l.to.y}
-          strokeDasharray={l.confirmed ? undefined : '10 8'}
+          strokeDasharray={l.verified ? undefined : '10 8'}
         />
       ))}
 
@@ -131,7 +131,7 @@ export function MapTag({ scene, selection }: { scene: Scene; selection: Selectio
         <strong>{d.name}</strong> · {d.room} · {d.type}
         {d.risk === 'high' && <span className="badge high">high risk</span>}
         <div className="muted">
-          {by.length ? by.map((l) => `${l.control} (${l.confirmed ? 'confirmed' : 'guess'})`).join(', ') : 'No switch linked yet'}
+          {by.length ? by.map((l) => `${l.control} (${l.status})`).join(', ') : 'No switch linked yet'}
         </div>
       </div>
     )

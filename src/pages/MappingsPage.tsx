@@ -38,8 +38,8 @@ export function MappingsPage() {
         <div className="card map-card">
           <MapView scene={map.scene} selection={selection} onSelect={setSelection} label="Switches and devices on the home map" />
           <div className="map-legend muted">
-            <span><i className="lg solid" /> confirmed</span>
-            <span><i className="lg dashed" /> guess</span>
+            <span><i className="lg solid" /> Verified</span>
+            <span><i className="lg dashed" /> Pending or Stale</span>
             <span><i className="lg caution" /> caution: not pressed directly</span>
           </div>
           <MapTag scene={map.scene} selection={selection} />

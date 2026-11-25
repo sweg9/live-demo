@@ -20,7 +20,7 @@ export type Source = 'model' | 'scan' | 'photo'
 const CUT_HEIGHT = 1.8 // m: the raw scan is cut here, like a doll's house
 const MARK_HEIGHT = 1.15 // m: devices and switches float here (their real heights are not known)
 const ROBOT_SPEED = 0.9 // m/s on screen; display only
-const COLORS = { accent: '#4c55e0', guess: '#b8730a', high: '#e5484d', control: '#16181d', caution: '#b8730a', route: '#858a95', robot: '#4c55e0' }
+const COLORS = { accent: '#4c55e0', unverified: '#b8730a', high: '#e5484d', control: '#16181d', caution: '#b8730a', route: '#858a95', robot: '#4c55e0' }
 
 type Props = {
   scene: Scene
@@ -72,9 +72,9 @@ export default function HomeMap3D({ scene, selection = null, onSelect, robot, ro
           <Line
             key={l.id}
             points={[at(l.from), at(l.to)]}
-            color={l.confirmed ? COLORS.accent : COLORS.guess}
+            color={l.verified ? COLORS.accent : COLORS.unverified}
             lineWidth={hl.has(l.id) ? 5 : 2.5}
-            dashed={!l.confirmed}
+            dashed={!l.verified}
             dashSize={0.08}
             gapSize={0.06}
             transparent

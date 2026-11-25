@@ -67,7 +67,7 @@ describe('FR-02 mappings (C-06, C-08)', () => {
   })
 })
 
-describe('C-09 failures', () => {
+describe('FR-08 failures (C-09)', () => {
   const row = async (text: RegExp) => (await screen.findByText(text)).closest('li')!
 
   it('lists failed, unsure and cancelled runs and does nothing until the resident chooses', async () => {
@@ -94,10 +94,10 @@ describe('C-09 failures', () => {
     expect(hub.timers.length).toBeGreaterThan(0)
   })
 
-  it('C-08: refuses to retry a device whose switch is not confirmed', async () => {
+  it('C-08: refuses to retry a device whose switch is not Verified', async () => {
     renderAt('/failures')
     await userEvent.click(within(await row(/desk lamp turned on/)).getByRole('button', { name: 'Try again' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not confirmed/)
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not Verified/)
     expect(hub.timers).toHaveLength(0)
   })
 })

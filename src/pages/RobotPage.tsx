@@ -10,7 +10,7 @@ import { pressSpotFor, robotPoint, routeStops, type Selection } from '../map/mod
 import { useScene } from '../map/useScene'
 
 // Send the robot: pick places on the map, in order. One place is "go here"; more are "stop here,
-// then go there". Only devices with a confirmed switch have a spot to go to (C-08). The robot
+// then go there". Only devices with a Verified switch have a spot to go to (C-08). The robot
 // checks the way before every leg (C-04). Nothing is pressed.
 
 const MAX_STOPS = 4 // keeps an order short enough to follow on screen; not a product value
@@ -30,7 +30,7 @@ export function RobotPage() {
   const pick = (s: Selection) => {
     if (!s || s.kind !== 'device') return
     if (!reachable(s.id)) {
-      setNote(`${devices.name(s.id)} has no confirmed switch yet, so there is no spot to go to.`)
+      setNote(`${devices.name(s.id)} has no Verified switch yet, so there is no spot to go to.`)
       return
     }
     setNote(null)

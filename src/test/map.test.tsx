@@ -13,7 +13,7 @@ const withRejected = mappings.map((m) => (m.mapping_id === 'map-2' ? { ...m, sta
 const scene = buildScene(layout, controls, devices, mappings)
 
 describe('map model', () => {
-  it('C-08: confirmed links are solid, guesses dashed, rejected not drawn', () => {
+  it('FR-02, C-08: Verified links are solid, Pending and Stale dashed, Rejected not drawn', () => {
     const { container } = render(<HomeMap scene={buildScene(layout, controls, devices, withRejected)} />)
     expect(container.querySelector('[data-testid=link-map-1]')).not.toHaveAttribute('stroke-dasharray') // Verified
     expect(container.querySelector('[data-testid=link-map-3]')).toHaveAttribute('stroke-dasharray') // Stale

@@ -20,7 +20,7 @@ describe.each(Object.entries(SCENARIOS))('scenario rules: %s', (_name, events) =
   const runIds = [...new Set(progress.map((p) => p.run_id))]
   const stepsOf = (id: string): RunProgress[] => progress.filter((p) => p.run_id === id)
 
-  it('C-04: every press comes right after a passed safety gate, at most 2 per run', () => {
+  it('FR-10, FR-11, C-04: every press comes right after a passed safety gate, at most 2 per run', () => {
     for (const id of runIds) {
       const steps = stepsOf(id)
       steps.forEach((s, i) => {
@@ -41,7 +41,7 @@ describe.each(Object.entries(SCENARIOS))('scenario rules: %s', (_name, events) =
     }
   })
 
-  it('C-09: wireless is tried before any press, and unsure never leads to another press', () => {
+  it('FR-07, FR-08, FR-11, C-09: wireless is tried before any press, and unsure never leads to another press', () => {
     for (const id of runIds) {
       const steps = stepsOf(id)
       const wireless = steps.findIndex((s) => s.stage === 'S5')
