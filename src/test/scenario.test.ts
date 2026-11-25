@@ -1,5 +1,5 @@
 import type { LiveEvent, RunProgress } from '../api/proposed'
-import { askingScenario, bedtimeScenario, EMERGENCY, retryScenario, routeScenario } from '../mocks/scenario'
+import { askingScenario, bedtimeScenario, EMERGENCY, playSituation, retryScenario, routeScenario } from '../mocks/scenario'
 import { devices, mappings, runs as fixtureRuns } from '../mocks/fixtures'
 import { hub } from '../mocks/hub'
 import { acted, currentStep, initialLive, reduce, visitsOf } from '../live/live'
@@ -92,6 +92,15 @@ describe.each(Object.entries(SCENARIOS))('scenario rules: %s', (name, events) =>
 
 describe('FR-11: one more press after a failed check, like the hub', () => {
   const floor = events.flatMap((e) => (e.kind === 'run.progress' && e.data.device_id === 'dev-floor' ? [e.data] : []))
+
+  it('C-09: never presses again after an unsure check, even when the second look says no', () => {
+    const unsureThenNo = playSituation(
+      { kind: 'test', trigger: 'time', summary: 'test' },
+      [{ key: 'lamp', device_id: 'dev-floor', action: 'off', wireless: null, gate: 'pass', checks: ['unsure', 'no', 'yes'] }],
+    ).events.flatMap((t) => (t.event.kind === 'run.progress' ? [t.event.data] : []))
+    expect(unsureThenNo.filter((p) => p.step === 'press')).toHaveLength(1)
+    expect(unsureThenNo.at(-1)).toMatchObject({ step: 'check', answer: 'no', text: 'it did not work' })
+  })
 
   it('presses twice, each after a passed gate, when the first check says no', () => {
     expect(floor.filter((p) => p.step === 'press').map((p) => p.text)).toEqual(['press', 'press again'])

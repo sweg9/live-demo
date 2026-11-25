@@ -203,12 +203,14 @@ class Player {
       status('checking')
       this.task(r, 'check', 'check the effect with the camera', 'S6', 'ARM')
       answer = answers.shift() ?? 'yes'
-      if (answer === 'unsure') {
+      const wasUnsure = answer === 'unsure'
+      if (wasUnsure) {
         this.progress(r, 'check', 'unsure', 'S6', 'ARM', { answer, reason: unclear })
         this.task(r, 'check', 'unsure: look once more without pressing again', 'S6', 'ARM')
         answer = answers.shift() ?? 'unsure'
       }
-      const more = answer === 'no' && n < MAX_PRESSES
+      // FR-11, C-09: after an unsure check there is no second press, even when the second look says no
+      const more = answer === 'no' && n < MAX_PRESSES && !wasUnsure
       const said = { yes: 'it worked', no: more ? 'it did not work: press once more' : 'it did not work', unsure: 'still unsure' }[answer]
       this.progress(r, 'check', said, 'S6', 'ARM', { answer, reason: answer === 'yes' ? null : answer === 'no' ? 'the check saw no change' : unclear })
       if (!more) break
