@@ -27,8 +27,13 @@ function localScan(): Plugin {
   }
 }
 
-// With VITE_MOCK=off, /api goes to a real server (for example the local k3d cluster at
-// https://sweg9.localhost:8443). Otherwise MSW answers in the browser and nothing leaves the page.
+// With VITE_MOCK=off, /api goes to a real server. Otherwise MSW answers in the browser and
+// nothing leaves the page.
+//
+// The server's routes have no /api prefix (the ingress strips it), so the proxy strips it too:
+// /api/me -> <target>/me. The default is the server run on this computer as backend-server's
+// README says. For an ingress, put its /api in the target, for example
+// VITE_API_TARGET=https://sweg9.localhost:8443/api (the proxy keeps the target's path).
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
@@ -36,10 +41,11 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: env.VITE_API_TARGET ?? 'https://sweg9.localhost:8443',
+          target: env.VITE_API_TARGET ?? 'http://127.0.0.1:8000',
           changeOrigin: true,
           secure: false, // local self-signed certificate only
           ws: true,
+          rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
     },

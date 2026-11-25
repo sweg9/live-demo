@@ -14,7 +14,7 @@ npm run build
 
 - **Mock.** `src/mocks/` answers every route of the spec in the browser with demo data, so the app runs with no server. Nothing leaves the page. A reload starts the data again. It plays a bedtime scenario over the live WebSocket, and acts like the hub for the emergency stop, Try again and move orders. Demo password: `nova-demo` (mock only).
 - **Proposed API.** Routes and live events the dashboard needs that are not in the spec yet: [docs/proposed-api.md](docs/proposed-api.md). The mock answers them; the types are in `src/api/proposed.ts`.
-- **Real server.** `VITE_API_TARGET` defaults to `https://sweg9.localhost:8443` (a local k3d cluster). Put a different target in `.env.local`, which is never committed (C-10).
+- **Real server.** `VITE_API_TARGET` defaults to `http://127.0.0.1:8000`: the server and the hub run on this computer as [backend-server's README](https://github.com/sweg9/backend-server#run) says (`--demo-scenarios` plays the demo scenarios). The proxy strips `/api`, like the ingress. For a cluster, include its `/api`: `VITE_API_TARGET=https://sweg9.localhost:8443/api`. Put a different target in `.env.local`, which is never committed (C-10).
 - **API types.** `api/backend-server.yaml` is a copy of `backend-server/openapi/backend-server.yaml`, the team's contract. `npm run api:sync` copies it again from a sibling checkout and regenerates the types.
 
 ## Screens
