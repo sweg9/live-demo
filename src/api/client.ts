@@ -13,6 +13,7 @@ export const api = createClient<paths>({
 })
 
 export type Schemas = components['schemas']
+export type Paths = paths
 export type Control = Schemas['Control']
 export type Device = Schemas['Device']
 export type Mapping = Schemas['Mapping']
