@@ -1,0 +1,12 @@
+# Never in the image build context: the textured scan (C-05), local env files (C-10), and what the
+# build makes again.
+local/
+.env*
+node_modules/
+dist/
+public/mockServiceWorker.js
+src/api/schema.d.ts
+.git/
+skills/
+.claude/
+*.log

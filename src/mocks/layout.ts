@@ -1,0 +1,86 @@
+import type { HomeLayout } from '../api/proposed'
+
+// The mock home for the proposed GET /map: centimetres, x to the right, y down, seen from above
+// with the scan's own handedness (not mirrored).
+//
+// Measured from the map team's LiDAR scan of two dorm rooms (2026-11-24). A scan point (x, y)
+// in metres, z up, maps to these coordinates with a = 34.25°:
+//   X = 100 · (x·cos a − y·sin a + 2.5139)
+//   Y = 100 · (7.6875 − x·sin a − y·cos a)
+// Rooms, walls and furniture were drafted by tools/scan_to_plan.py and then straightened by
+// hand against the scan points: noise and rounded scan corners became square walls, and the
+// gaps in the walls are the doors. Only numbers are kept here; the photo texture stays on the
+// owner's computer (C-05).
+//
+// Controls, devices and the dock are ESTIMATES placed for the demo, not measured: switches beside
+// the doors and under the windows, press spots in the aisles. The map team replaces them with
+// the positions they mark on the scan.
+
+export const layout: HomeLayout = {
+  rooms: [
+    { room: 'Room A', x: 40, y: 520, w: 310, h: 312 },
+    { room: 'Room B', x: 350, y: 520, w: 315, h: 312 },
+    { room: 'Entry A', x: 40, y: 370, w: 218, h: 150 },
+    { room: 'Entry B', x: 445, y: 380, w: 175, h: 140 },
+    { room: 'Lobby', x: 258, y: 365, w: 187, h: 147 },
+    // One straight hallway as wide as both rooms (the scan's bump and slanted edges were noise),
+    // with the nook beside Entry B. Corrected with the map team on 2026-11-25.
+    { room: 'Hallway', x: 30, y: 148, w: 640, h: 232 },
+    { room: 'Hallway', x: 620, y: 380, w: 50, h: 140, label: false },
+  ],
+  walls: [
+    [40, 832, 665, 832, 14], // window wall
+    [40, 520, 40, 832, 12],
+    [665, 520, 665, 832, 12],
+    [350, 520, 350, 832, 10], // between the rooms
+    [40, 520, 150, 520, 12], // Room A door: 150–240
+    [240, 520, 470, 520, 14], // Room B door: 470–555
+    [555, 520, 665, 520, 12],
+    [40, 370, 40, 520, 12], // Entry A, in line with Room A's outer wall
+    [620, 380, 620, 520, 10],
+    [258, 365, 258, 420, 10], // Entry A door to the lobby: 420–495
+    [258, 495, 258, 520, 10],
+    [445, 380, 445, 420, 10], // Entry B door to the lobby: 420–495
+    [445, 495, 445, 520, 10],
+    [30, 370, 258, 370, 18],
+    [445, 380, 620, 380, 12],
+    [30, 148, 670, 148, 12], // hallway: one straight strip
+    [30, 148, 30, 370, 12],
+    [670, 148, 670, 520, 12],
+  ],
+  furniture: [
+    { kind: 'bed', x: 42, y: 522, w: 106, d: 206, h: 60 },
+    { kind: 'wardrobe', x: 42, y: 736, w: 30, d: 90, h: 200 },
+    { kind: 'desk', x: 72, y: 742, w: 78, d: 84, h: 75 },
+    { kind: 'bed', x: 238, y: 522, w: 108, d: 200, h: 60 },
+    { kind: 'desk', x: 252, y: 726, w: 70, d: 100, h: 75 },
+    { kind: 'wardrobe', x: 322, y: 726, w: 24, d: 100, h: 200 },
+    { kind: 'bed', x: 354, y: 522, w: 110, d: 204, h: 60 },
+    { kind: 'wardrobe', x: 354, y: 738, w: 26, d: 88, h: 200 },
+    { kind: 'desk', x: 380, y: 730, w: 76, d: 96, h: 75 },
+    { kind: 'bed', x: 557, y: 522, w: 104, d: 214, h: 60 },
+    { kind: 'desk', x: 557, y: 740, w: 86, d: 88, h: 75 },
+    { kind: 'wardrobe', x: 643, y: 740, w: 18, d: 88, h: 200 },
+    { kind: 'wardrobe', x: 42, y: 378, w: 32, d: 140, h: 200 },
+    { kind: 'shelf', x: 78, y: 388, w: 62, d: 76, h: 190 },
+    { kind: 'shelf', x: 575, y: 450, w: 42, d: 68, h: 120 },
+  ],
+  ceiling: 249,
+  controls: [
+    { control_id: 'ctl-living-1', at: { x: 244, y: 520 }, press_spot: { x: 210, y: 565 }, spot_id: 'spot-living-1' },
+    { control_id: 'ctl-living-2', at: { x: 146, y: 520 }, press_spot: { x: 180, y: 565 }, spot_id: 'spot-living-2' },
+    { control_id: 'ctl-living-3', at: { x: 200, y: 832 }, press_spot: { x: 195, y: 775 }, spot_id: 'spot-living-3' },
+    { control_id: 'ctl-bed-1', at: { x: 557, y: 785 }, press_spot: { x: 515, y: 785 }, spot_id: 'spot-bed-1' },
+    { control_id: 'ctl-bed-strip', at: { x: 495, y: 832 }, press_spot: { x: 495, y: 775 }, spot_id: 'spot-bed-strip' },
+    { control_id: 'ctl-bed-2', at: { x: 474, y: 520 }, press_spot: { x: 505, y: 565 }, spot_id: 'spot-bed-2' },
+  ],
+  devices: [
+    { device_id: 'dev-ceiling', at: { x: 195, y: 676 } },
+    { device_id: 'dev-fan', at: { x: 175, y: 800 } },
+    { device_id: 'dev-floor', at: { x: 228, y: 740 } },
+    { device_id: 'dev-desk', at: { x: 600, y: 785 } },
+    { device_id: 'dev-heater', at: { x: 530, y: 812 } },
+    { device_id: 'dev-purifier', at: { x: 510, y: 680 } },
+  ],
+  dock: { x: 350, y: 440 },
+}

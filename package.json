@@ -1,0 +1,47 @@
+{
+  "name": "live-demo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "api:sync": "cp ../backend-server/openapi/backend-server.yaml api/backend-server.yaml && npm run api:types",
+    "api:types": "openapi-typescript api/backend-server.yaml -o src/api/schema.d.ts",
+    "postinstall": "msw init public --save=false && npm run api:types",
+    "dev": "vite",
+    "dev:real": "VITE_MOCK=off vite",
+    "build": "npm run api:types && tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@tanstack/react-query": "^5.108.4",
+    "openapi-fetch": "^0.17.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.6",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "@testing-library/jest-dom": "^8.0.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.170.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^29.1.1",
+    "meshoptimizer": "^1.3.0",
+    "msw": "^3.0.7",
+    "obj2gltf": "^3.2.0",
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

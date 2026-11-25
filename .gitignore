@@ -1,0 +1,22 @@
+# Dependencies and build output (C-11)
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Generated: `npm install` recreates them (postinstall)
+src/api/schema.d.ts
+public/mockServiceWorker.js
+
+# The textured scan shows personal belongings: it stays on this computer and is served only by
+# the dev server, never copied into dist/ (C-05)
+local/
+
+# Local settings and secrets (C-10)
+.env
+.env.*
+!.env.example
+
+# Logs and editors
+*.log
+.DS_Store
+.vscode/
