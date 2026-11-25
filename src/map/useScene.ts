@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api, unwrap } from '../api/client'
 import { proposed } from '../api/extra'
@@ -8,9 +9,14 @@ export function useScene() {
   const controls = useQuery({ queryKey: ['controls'], queryFn: () => unwrap(api.GET('/controls')) })
   const devices = useQuery({ queryKey: ['devices'], queryFn: () => unwrap(api.GET('/devices')) })
   const mappings = useQuery({ queryKey: ['mappings'], queryFn: () => unwrap(api.GET('/mappings')) })
-  const ready = layout.data && controls.data && devices.data && mappings.data
+  // The same Scene object until the data changes: live events re-render the pages several
+  // times a second, and the 3D model must not be rebuilt each time.
+  const scene = useMemo(
+    () => (layout.data && controls.data && devices.data && mappings.data ? buildScene(layout.data, controls.data, devices.data, mappings.data) : undefined),
+    [layout.data, controls.data, devices.data, mappings.data],
+  )
   return {
-    scene: ready ? buildScene(layout.data!, controls.data!, devices.data!, mappings.data!) : undefined,
+    scene,
     mappings: mappings.data ?? [],
     error: layout.error ?? controls.error ?? devices.error ?? mappings.error,
   }

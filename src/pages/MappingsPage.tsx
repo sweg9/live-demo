@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, unwrap, type Device, type Mapping } from '../api/client'
-import { HomeMap, MapTag } from '../map/HomeMap'
+import { MapTag } from '../map/HomeMap'
+import { MapView } from '../map/MapView'
 import { highlighted, type Selection } from '../map/model'
 import { useScene } from '../map/useScene'
 
@@ -35,7 +36,7 @@ export function MappingsPage() {
     <section>
       {map.scene && (
         <div className="card map-card">
-          <HomeMap scene={map.scene} selection={selection} onSelect={setSelection} label="Switches and devices on the home map" />
+          <MapView scene={map.scene} selection={selection} onSelect={setSelection} label="Switches and devices on the home map" />
           <div className="map-legend muted">
             <span><i className="lg solid" /> confirmed</span>
             <span><i className="lg dashed" /> guess</span>

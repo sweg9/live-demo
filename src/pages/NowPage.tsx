@@ -6,7 +6,7 @@ import { useLive } from '../live/LiveProvider'
 import { currentStep, runsOf } from '../live/live'
 import { STEP_LABEL } from '../live/labels'
 import { LiveBar } from './LiveBar'
-import { HomeMap } from '../map/HomeMap'
+import { MapView } from '../map/MapView'
 import { robotPoint, routeOf, routeStops } from '../map/model'
 import { useScene } from '../map/useScene'
 
@@ -82,7 +82,7 @@ export function NowPage() {
             <Link className="pill" to="/mappings">Devices</Link>
           </div>
           {map.scene ? (
-            <HomeMap
+            <MapView
               scene={map.scene}
               robot={robotPoint(map.scene, map.mappings, robot)}
               route={

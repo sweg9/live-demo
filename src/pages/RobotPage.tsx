@@ -5,7 +5,7 @@ import { proposed } from '../api/extra'
 import { useDevices } from '../api/hooks'
 import { useLive } from '../live/LiveProvider'
 import { STEP_LABEL } from '../live/labels'
-import { HomeMap } from '../map/HomeMap'
+import { MapView } from '../map/MapView'
 import { pressSpotFor, robotPoint, routeStops, type Selection } from '../map/model'
 import { useScene } from '../map/useScene'
 
@@ -46,7 +46,7 @@ export function RobotPage() {
     <section>
       <p className="muted">Select places on the map in the order to visit. Select again to remove.</p>
       <div className="card map-card">
-        <HomeMap
+        <MapView
           scene={scene}
           selection={stops.length ? { kind: 'device', id: stops.at(-1)! } : null}
           onSelect={pick}

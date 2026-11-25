@@ -30,8 +30,22 @@ npm run build
 | Send the robot: ordered stops on the map | Built on a proposed route | C-04, C-08 |
 | History & stats | Built from `GET /runs` | FR-12, C-07 |
 
-- **Map.** A 2D plan whose rooms are measured from the map team's dorm scan; switch and device positions are estimates. A 3D map can replace the drawing in `src/map/HomeMap.tsx`; the pages use only `src/map/model.ts`.
 - No live camera view: video never leaves the home (C-05).
+
+## Map: 2D plan and 3D model
+
+The map switches between 2D and 3D. Both draw the same data (`src/map/model.ts`), so marks, links and the robot sit on the same spots.
+
+- **Plan.** Rooms, straight walls (gaps are doors) and furniture boxes in `src/mocks/layout.ts`, measured from the map team's LiDAR scan of 2026-11-24 and straightened by hand. Switch and device positions are estimates until the map team marks them.
+- **3D sources.** `Model` (default) builds clean walls, floors and furniture from the plan. `Scan` shows the raw LiDAR shape, `public/scan/home-shape.glb` (no texture). `Photo` shows the textured scan, which stays in `local/` on the owner's computer: it is git-ignored, served only by the dev server and never built into `dist/` (C-05).
+- **Rebuilding from a new scan** (OBJ + MTL + JPG):
+
+  ```bash
+  node tools/scan-to-glb.mjs <scan.obj>       # public/scan/home-shape.glb and local/scan/home-textured.glb
+  uv run --with numpy --with scipy --with matplotlib python -I tools/scan_to_plan.py <scan.obj> plan.json --debug plan.png
+  ```
+
+  `scan_to_plan.py` gives a draft of walls and furniture; check it against `plan.png` and correct it by hand before it goes into the layout. The scan itself never goes into this repository.
 
 ## Skills and standards
 
