@@ -32,6 +32,21 @@ npm run build
 
 - No live camera view: video never leaves the home (C-05).
 
+## Deploy: the Dashboard image
+
+In the architecture of 2026-11-25 the Dashboard is a pod in k3s beside FastAPI. The ingress sends `/` to it, `/api` to FastAPI (prefix stripped) and the `grafana.` subdomain to Grafana, so the Dashboard and the API share one origin and the session cookie stays `SameSite=Strict`.
+
+```bash
+docker build -t live-demo:local .
+docker run --rm -p 8080:8080 live-demo:local     # http://localhost:8080, /healthz for probes
+```
+
+- **Image** (`Dockerfile`, `deploy/nginx.conf`): the built app on `nginx-unprivileged`, port **8080**, non-root (uid 101). It runs with a read-only root filesystem and a `/tmp` emptyDir, and with no capabilities. Static files only: no secrets, no mock (its worker is left out of `dist/`), no textured scan (C-05, C-10). `.dockerignore` keeps `local/` and `.env*` out of the build context.
+- **Headers on every answer:** a CSP that allows only this origin (`'wasm-unsafe-eval'` for the 3D model decoder), HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, and a `Permissions-Policy` that turns off the camera and the microphone. `/api/*` that reaches this pod answers 404, never the app.
+- **CI** (`.github/workflows/dashboard-image.yml`): typecheck, tests, build and an image build on every pull request; on `main` it pushes `ghcr.io/sweg9/live-demo:latest` and `:<commit>`.
+- **For backend-server's `deploy/k8s/server/web.yaml`** (owned there): `containerPort: 8080`; `securityContext` with `runAsNonRoot: true`, `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, `capabilities: {drop: [ALL]}`; an `emptyDir` at `/tmp`; probes on `/healthz`; a NetworkPolicy with no egress for the `web` pod (the browser reaches `/api` through the ingress, never this pod). Then add `web.yaml` to `kustomization.yaml` and uncomment the `/` route in `ingress.yaml`.
+- **Not served yet:** `GET /map` is still proposed, so the map on Home and Send the robot show "Could not load the map" against the real server.
+
 ## Map: 2D plan and 3D model
 
 The map switches between 2D and 3D. Both draw the same data (`src/map/model.ts`), so marks, links and the robot sit on the same spots.
