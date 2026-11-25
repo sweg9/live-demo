@@ -134,3 +134,10 @@ describe('FR-04, FR-06 routines (C-06)', () => {
     confirm.mockRestore()
   })
 })
+
+describe('FR-12 stats scope (C-07)', () => {
+  it('says which runs the stats come from', async () => {
+    renderAt('/history')
+    expect(await screen.findByLabelText('Stats scope')).toHaveTextContent(`From all ${runs.length} runs so far.`)
+  })
+})
