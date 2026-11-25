@@ -5,6 +5,8 @@ import App from '../App'
 import { LiveStateProvider } from '../live/LiveProvider'
 import { initialLive, reduce, type LiveState } from '../live/live'
 import { bedtimeScenario } from '../mocks/scenario'
+import { http, HttpResponse } from 'msw'
+import { server } from './setup'
 
 // The live screens are drawn from LiveState only, so each test gives a state at some point
 // of the scenario instead of opening a WebSocket.
@@ -63,6 +65,14 @@ describe('Situation → run, before the visit plan arrives', () => {
     await renderAt('/flow', upTo(firstVisits)) // every wireless result in, the visit list not yet
     expect(screen.getByText('Planning the visits…')).toBeInTheDocument()
     expect(screen.queryByText('Nothing left for the robot.')).toBeNull()
+  })
+})
+
+describe('Now without a map', () => {
+  it('says the map is not set up yet instead of an error', async () => {
+    server.use(http.get('/api/map', () => HttpResponse.json({ code: 'not_found', message: 'No such route' }, { status: 404 })))
+    await renderAt('/', { ...initialLive, connected: true })
+    expect(await screen.findByText('The home map is not set up yet.')).toBeInTheDocument()
   })
 })
 
