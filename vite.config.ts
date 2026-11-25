@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { createReadStream, existsSync } from 'node:fs'
+import { createReadStream, existsSync, rmSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -27,6 +27,18 @@ function localScan(): Plugin {
   }
 }
 
+// `msw init` puts the mock's service worker in public/ for the dev server. A build never uses the
+// mock (main.tsx starts it only in dev), so the worker is left out of dist/.
+function noMockWorker(): Plugin {
+  return {
+    name: 'no-mock-worker',
+    apply: 'build',
+    closeBundle() {
+      rmSync(resolve(__dirname, 'dist/mockServiceWorker.js'), { force: true })
+    },
+  }
+}
+
 // With VITE_MOCK=off, /api goes to a real server. Otherwise MSW answers in the browser and
 // nothing leaves the page.
 //
@@ -37,7 +49,7 @@ function localScan(): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
-    plugins: [react(), localScan()],
+    plugins: [react(), localScan(), noMockWorker()],
     server: {
       proxy: {
         '/api': {
