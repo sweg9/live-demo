@@ -3,8 +3,7 @@ import * as fx from './fixtures'
 import { hub } from './hub'
 import { layout } from './layout'
 
-// Browser mock of api/backend-server.yaml (0.5.0), plus GET /map, which is still PROPOSED
-// (docs/proposed-api.md). Same paths and shapes as the real server, so turning the mock off (VITE_MOCK=off)
+// Browser mock of api/backend-server.yaml (0.6.0). Same paths and shapes as the real server, so turning the mock off (VITE_MOCK=off)
 // is the only change needed to use it. The records and the live events live in mocks/hub.ts.
 
 export const REPLAY = 'replay'
@@ -64,7 +63,7 @@ export const handlers = [
     const limit = Number(new URL(request.url).searchParams.get('limit') ?? hub.state.runs.length)
     return HttpResponse.json(hub.state.runs.slice(0, limit))
   })),
-  http.get('/api/map', signedIn(() => HttpResponse.json(layout))), // PROPOSED
+  http.get('/api/map', signedIn(() => HttpResponse.json(layout))),
 
   // Situations, visits and the robot (0.4.0)
   http.get('/api/situations', signedIn(() =>

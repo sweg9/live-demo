@@ -1,6 +1,6 @@
 import type { HomeLayout } from '../api/proposed'
 
-// The mock home for the proposed GET /map: centimetres, x to the right, y down, seen from above
+// The mock home for GET /map (HomeLayout, since 0.6.0): centimetres, x to the right, y down, seen from above
 // with the scan's own handedness (not mirrored).
 //
 // Measured from the map team's LiDAR scan of two dorm rooms (2026-11-24). A scan point (x, y)

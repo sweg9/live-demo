@@ -57,7 +57,7 @@ describe('Send the robot', () => {
   })
 })
 
-describe('Send the robot without a map (GET /map still proposed)', () => {
+describe('Send the robot without a map (GET /map answers 404)', () => {
   const noMap = () => server.use(http.get('/api/map', () => HttpResponse.json({ code: 'not_found', message: 'No such route' }, { status: 404 })))
 
   it('FR-09: picks places from a list and sends the same move order', async () => {
