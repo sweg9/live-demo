@@ -12,8 +12,8 @@ npm test             # Vitest, with the same mock
 npm run build
 ```
 
-- **Mock.** `src/mocks/` answers every route of the spec in the browser with demo data, so the app runs with no server. Nothing leaves the page. A reload starts the data again. It plays a bedtime scenario over the live WebSocket in the hub's order and shapes (backend-server 0.5.0), and acts like the hub for the emergency stop, Try again, Leave it, the move order and the yes-or-no answer to a situation. Demo password: `nova-demo` (mock only).
-- **API notes.** What was adopted in 0.5.0 and what is still proposed (`GET /map`): [docs/proposed-api.md](docs/proposed-api.md). The live event types are in `src/api/proposed.ts`, taken from the spec.
+- **Mock.** `src/mocks/` answers every route of the spec in the browser with demo data, so the app runs with no server. Nothing leaves the page. A reload starts the data again. It plays a bedtime scenario over the live WebSocket in the hub's order and shapes (backend-server 0.6.0), and acts like the hub for the emergency stop, Try again, Leave it, the move order and the yes-or-no answer to a situation. Demo password: `nova-demo` (mock only).
+- **API notes.** What was adopted in 0.5.0 and 0.6.0 and what is still proposed: [docs/proposed-api.md](docs/proposed-api.md). The live event types and the home map (`HomeLayout`) are in `src/api/proposed.ts`, taken from the spec.
 - **Real server.** `VITE_API_TARGET` defaults to `http://127.0.0.1:8000`: the server and the hub run on this computer as [backend-server's README](https://github.com/sweg9/backend-server#run) says (`--demo-scenarios` plays the demo scenarios). The proxy strips `/api`, like the ingress. For a cluster, include its `/api`: `VITE_API_TARGET=https://sweg9.localhost:8443/api`. Put a different target in `.env.local`, which is never committed (C-10).
 - **API types.** `api/backend-server.yaml` is a copy of `backend-server/openapi/backend-server.yaml`, the team's contract. `npm run api:sync` copies it again from a sibling checkout and regenerates the types.
 
@@ -46,7 +46,6 @@ docker run --rm -p 8080:8080 live-demo:local     # http://localhost:8080, /healt
 - **Headers on every answer:** a CSP that allows only this origin (`'wasm-unsafe-eval'` for the 3D model decoder), HSTS, `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: no-referrer`, and a `Permissions-Policy` that turns off the camera and the microphone. `/api/*` that reaches this pod answers 404, never the app.
 - **CI** (`.github/workflows/dashboard-image.yml`): typecheck, tests, build and an image build on every pull request; on `main` it pushes `ghcr.io/sweg9/live-demo:latest` and `:<commit>`.
 - **For backend-server's `deploy/k8s/server/web.yaml`** (owned there): `containerPort: 8080`; `securityContext` with `runAsNonRoot: true`, `readOnlyRootFilesystem: true`, `allowPrivilegeEscalation: false`, `capabilities: {drop: [ALL]}`; an `emptyDir` at `/tmp`; probes on `/healthz`; a NetworkPolicy with no egress for the `web` pod (the browser reaches `/api` through the ingress, never this pod). Then add `web.yaml` to `kustomization.yaml` and uncomment the `/` route in `ingress.yaml`.
-- **Not served yet:** `GET /map` is still proposed, so the map on Home and Send the robot show "Could not load the map" against the real server.
 
 ## Map: 2D plan and 3D model
 

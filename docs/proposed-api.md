@@ -1,9 +1,9 @@
 # API changes the dashboard needs
 
 For: the backend-server owner, the mock-server owner and the map owner.
-Status: most of the first proposal (2026-11-24) was adopted in backend-server 0.5.0 (`openapi/backend-server.yaml`), merged with `openapi/dashboard-proposed.yaml`. That spec is the contract now. What is left is under [Still proposed](#still-proposed).
+Status: most of the first proposal (2026-11-24) was adopted in backend-server 0.5.0 and the home map in 0.6.0 (`openapi/backend-server.yaml`), merged with `openapi/dashboard-proposed.yaml`. That spec is the contract now. What is left is under [Still proposed](#still-proposed).
 
-The browser mock (`src/mocks/`) answers every route of 0.5.0 and the proposed ones, with the same shapes and in the same event order as the hub's orchestrator.
+The browser mock (`src/mocks/`) answers every route of 0.6.0 that the dashboard calls, with the same shapes and in the same event order as the hub's orchestrator.
 
 ## Adopted in 0.5.0
 
@@ -24,14 +24,21 @@ The browser mock (`src/mocks/`) answers every route of 0.5.0 and the proposed on
 
 The dashboard reads `GET /situations`, `/visits` and `/robot` again when the socket opens, so a reload or a reconnect does not start from an empty screen.
 
+## Adopted in 0.6.0
+
+| What | In the spec | Rules |
+|---|---|---|
+| Home map | `GET /map` → `HomeLayout` (the dashboard's shape): centimetres on the floor, rooms, walls, furniture, each control's position and press spot with its `spot_id`, the dock. Numbers only, no photos. The positions of the demo home are estimates until the map team marks them on the scan | FR-09, C-05 |
+| Change the device of a mapping | `PATCH /mappings/{mapping_id} {device_id}` → `200 Mapping`, back to `Pending`; the `mapping` event carries `previous_device_id`. Not on the Devices screen yet | FR-02, C-08 |
+| Hub error | `notification` topic `task_failed` with `task`: the hand stopped and the runs going on were cancelled | C-04 |
+
 ## Still proposed
 
 | What | Why | Owner, and what must happen first |
 |---|---|---|
-| `GET /map` | Map on Home, Devices and Send the robot. The dashboard's shape is `HomeLayout` in [`src/api/proposed.ts`](../src/api/proposed.ts): centimetres on the floor, rooms, walls, furniture, and each control's position and press spot with its `spot_id` (the id `Robot.spot_id` and `Visit.spot_id` use) | The map owner and backend: one schema with the 3D `Map` of `dashboard-proposed.yaml` (metres, `spots`, `edges`). Numbers only, no photos (C-05) |
 | Trigger `resident` | A run the resident started from the app (Try again) has no trigger of its own; 0.5.0 keeps the old run's trigger and adds `retry_of` instead | Harness first: `data-model.md` has only `sensor` `time` `routine` (C-02). Maybe not needed now that `retry_of` exists |
 | `GET /stats` | History & stats. Today the Dashboard reads `GET /runs?limit=100` and counts in the browser, so the stats cover only the newest 100 runs (the screen says so) and every visit downloads the runs. The hub has every run in SQLite and can count them all | Backend: adopt the `Stats` schema already drafted in `openapi/dashboard-proposed.yaml` (runs, results, wireless and press rates, channels, failure reasons, top devices, mappings by status, verified ratio): the same numbers the screen shows, so only `src/pages/stats.ts` changes. Team view (2026-11-25): keep counting from `/runs` for the demo, add the route when the runs grow |
-| Change the device of a mapping; check a mapping again | Devices screen. `dashboard-proposed.yaml` has `PATCH /mappings/{id}` and `POST /mappings/{id}/recheck` | Backend: adopt them in the spec |
+| Check a mapping again | Devices screen. `dashboard-proposed.yaml` has `POST /mappings/{id}/recheck` | Backend: adopt it in the spec |
 
 ## To decide as a team
 
