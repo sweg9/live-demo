@@ -2,9 +2,8 @@ import type { Routine, Run, Schemas } from './client'
 
 // The live events and the shapes the dashboard uses, with the team's names (C-02).
 //
-// Since backend-server 0.5.0 every shape the dashboard needs is in the spec, so they come from
-// it. Only GET /map is still PROPOSED (docs/proposed-api.md): it must match the map team's and
-// the backend's 3D map first.
+// Since backend-server 0.6.0 every shape the dashboard needs is in the spec, including the home
+// map (HomeLayout), so they all come from it.
 
 export type Situation = Schemas['Situation']
 export type PlanItem = Schemas['PlanItem']
@@ -34,21 +33,7 @@ export type LiveEvent =
   | { kind: 'routine'; data: Routine }
   | { kind: 'control' | 'mapping' | 'scan'; data: unknown }
 
-/**
- * PROPOSED `GET /map`: the home as the dashboard draws it. Centimetres on the floor, x to the
- * right, y down. `spot_id` names the press spot as the robot reports it (Robot.spot_id,
- * Visit.spot_id). Names, kinds, statuses and risk still come from the lists.
- */
-export type Point = { x: number; y: number }
-export type HomeLayout = {
-  rooms: Array<{ room: string; x: number; y: number; w: number; h: number; label?: boolean }>
-  controls: Array<{ control_id: string; at: Point; press_spot: Point; spot_id: string }>
-  devices: Array<{ device_id: string; at: Point }>
-  dock: Point // where the robot waits; its spot is "dock"
-  /** Optional, for drawing: straight walls [x1, y1, x2, y2, thickness]; gaps are doors. */
-  walls?: Array<[number, number, number, number, number]>
-  /** Optional, for drawing: furniture as boxes; `h` is the height in cm. */
-  furniture?: Array<{ kind: 'bed' | 'desk' | 'wardrobe' | 'shelf'; x: number; y: number; w: number; d: number; h: number }>
-  /** Optional: ceiling height in cm. */
-  ceiling?: number
-}
+/** `GET /map` (since 0.6.0): the home as the dashboard draws it. Centimetres on the floor, x to the
+ * right, y down. `spot_id` names the press spot as the robot reports it (Robot.spot_id, Visit.spot_id). */
+export type HomeLayout = Schemas['HomeLayout']
+export type Point = Schemas['Point']

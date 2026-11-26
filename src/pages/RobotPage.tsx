@@ -13,8 +13,8 @@ import { useScene } from '../map/useScene'
 // there". Only devices with a Verified switch have a spot to go to (C-08). The robot checks the
 // way before every leg (C-04). Nothing is pressed.
 //
-// Places are picked on the map, or from a list while the server has no map yet (GET /map is
-// still proposed): the order is the same POST /robot/route either way.
+// Places are picked on the map, or from a list while the server has no map (GET /map answers
+// 404): the order is the same POST /robot/route either way.
 
 const MAX_STOPS = 4 // keeps an order short enough to follow on screen; the spec allows 10
 
