@@ -11,6 +11,23 @@ export const useLive = () => useContext(LiveContext)
 export const LiveStateProvider = LiveContext.Provider // for tests: give a state directly
 
 const RECONNECT_MS = 2000
+
+/**
+ * The lists to read again after a live event. A control found by a scan, or a mapping that changed,
+ * also changes the map (GET /map draws each control at its spot), which is otherwise read only once:
+ * without this, a new switch shows in the table but not on the map until a reload.
+ */
+export function refetchOn(kind: LiveEvent['kind']): string[][] {
+  switch (kind) {
+    case 'run.result': return [['runs']]
+    case 'situation': return [['situations']]
+    case 'routine': return [['routines']]
+    case 'mapping': return [['mappings'], ['map']]
+    case 'control': return [['controls'], ['map']]
+    case 'scan': return [['controls'], ['mappings'], ['map']]
+    default: return []
+  }
+}
 const MOCK = import.meta.env.DEV && import.meta.env.VITE_MOCK !== 'off'
 
 /** What the hub holds now, so a reload or a reconnect does not start from an empty screen. */
@@ -49,10 +66,7 @@ export function LiveProvider({ children }: { children: ReactNode }) {
           return
         }
         dispatch({ type: 'event', event })
-        if (event.kind === 'run.result') qc.invalidateQueries({ queryKey: ['runs'] })
-        if (event.kind === 'situation') qc.invalidateQueries({ queryKey: ['situations'] })
-        if (event.kind === 'mapping') qc.invalidateQueries({ queryKey: ['mappings'] })
-        if (event.kind === 'routine') qc.invalidateQueries({ queryKey: ['routines'] })
+        for (const queryKey of refetchOn(event.kind)) qc.invalidateQueries({ queryKey })
       }
       s.onclose = () => {
         dispatch({ type: 'connected', value: false })
