@@ -1,22 +1,27 @@
 import { Link } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { api, unwrap } from '../api/client'
 import { useDevices } from '../api/hooks'
 import { Icon } from '../components/Icon'
 import { useOpenFailures, useRuns } from '../live/runs'
 import { useLive } from '../live/LiveProvider'
 import { acted, visitsOf } from '../live/live'
-import { ROBOT_STATE, SITUATION_STATUS, STEP_LABEL, sentence } from '../live/labels'
+import { CONTROL_KIND_LABEL, CONTROL_KINDS, ROBOT_STATE, SITUATION_STATUS, STEP_LABEL, sentence } from '../live/labels'
 import { LiveBar } from './LiveBar'
 import { Notifications } from './Notifications'
 import { MapView } from '../map/MapView'
 import { robotPoint, spotStops, visitStops } from '../map/model'
 import { useScene } from '../map/useScene'
 
-// Home: what is happening right now, as cards. Each card leads to the page that tells more.
+// Home: what is happening right now, as square tiles two per row (situation, robot, what waits
+// for the resident, and the three control kinds NOVA maps). Each tile leads to the page that tells more.
 
 export function NowPage() {
   const live = useLive()
   const devices = useDevices()
   const map = useScene()
+  const controls = useQuery({ queryKey: ['controls'], queryFn: () => unwrap(api.GET('/controls')) }).data ?? []
+  const verified = new Set(map.mappings.filter((m) => m.status === 'Verified').map((m) => m.control_id))
   const runs = useRuns()
   const waiting = useOpenFailures()
   const situation = live.situations[0]
@@ -32,51 +37,67 @@ export function NowPage() {
     <section className="home">
       <LiveBar />
 
-      <div className="cards">
-        <article className="card feature ink">
-          <span className="bubble tone-accent"><Icon name="flow" size={26} /></span>
-          <div>
-            <h2 className="eyebrow">Situation</h2>
-            {situation ? (
-              <>
-                <p className="lead">{situation.summary}</p>
-                <p className="muted small">
-                  {new Date(situation.received_at).toLocaleTimeString()} · {SITUATION_STATUS[situation.status]}
-                </p>
-              </>
-            ) : (
-              <p className="lead muted">Waiting for a situation.</p>
-            )}
-            <Link className="pill" to="/flow">{situation?.status === 'waiting_for_answer' ? 'Answer' : 'See the flow'}</Link>
-          </div>
-        </article>
+      <div className="home-top">
+        {/* Square tiles, two per row, as in a home app's control list: icon and state on top, name below */}
+        <div className="home-tiles">
+          <Link to="/flow" className="hub-tile ink" aria-label="Situation">
+            <span className="tile-top">
+              <span className="bubble"><Icon name="flow" size={24} /></span>
+              {situation && <span className="tile-state">{situation.status === 'waiting_for_answer' ? 'Answer' : SITUATION_STATUS[situation.status]}</span>}
+            </span>
+            <span className="tile-body">
+              <span className="eyebrow">Situation</span>
+              <strong className="tile-title">{situation ? situation.summary : 'Waiting for a situation.'}</strong>
+              {situation && <span className="muted small">{new Date(situation.received_at).toLocaleTimeString()}</span>}
+            </span>
+          </Link>
 
-        <article className="card feature" aria-label="Robot">
-          <span className={`bubble ${tone}`}>
-            <Icon name="robot" size={26} />
-          </span>
-          <div>
-            <h2 className="eyebrow">Robot</h2>
-            <p className="lead">{robot.ral.state === 'error' ? 'Error: check the robot' : task?.step ? STEP_LABEL[task.step] : ROBOT_STATE[robot.state]}</p>
-            {task?.text && (
-              <p className="muted small">
-                {sentence(task.text)}
-                {task.device_id && ` · ${devices.name(task.device_id)}`}
-              </p>
-            )}
-            <Link className="pill" to="/robot">Send the robot</Link>
-          </div>
-        </article>
+          <Link to="/robot" className="hub-tile" aria-label="Robot">
+            <span className="tile-top">
+              <span className={`bubble ${tone}`}><Icon name="robot" size={24} /></span>
+              {task?.step && robot.ral.state !== 'error' && <span className="tile-state">{ROBOT_STATE[robot.state]}</span>}
+            </span>
+            <span className="tile-body">
+              <span className="eyebrow">Robot</span>
+              <strong className="tile-title">{robot.ral.state === 'error' ? 'Error: check the robot' : task?.step ? STEP_LABEL[task.step] : ROBOT_STATE[robot.state]}</strong>
+              {task?.text && (
+                <span className="muted small clamp">
+                  {sentence(task.text)}
+                  {task.device_id && ` · ${devices.name(task.device_id)}`}
+                </span>
+              )}
+            </span>
+          </Link>
 
-        <article className={`card feature ${waiting ? 'attention' : ''}`}>
-          <span className={`bubble ${waiting ? 'tone-amber' : 'tone-green'}`}><Icon name="alert" size={26} /></span>
-          <div>
-            <h2 className="eyebrow">Needs you</h2>
-            <p className="lead">{waiting ? `${waiting} ${waiting === 1 ? 'run waits' : 'runs wait'} for your choice` : 'Nothing is waiting for you'}</p>
-            <p className="muted small">Nothing is tried again on its own.</p>
-            {waiting > 0 && <Link className="pill" to="/failures">Review</Link>}
-          </div>
-        </article>
+          <Link to="/failures" className={`hub-tile ${waiting ? 'attention' : ''}`} aria-label="Needs you">
+            <span className="tile-top">
+              <span className={`bubble ${waiting ? 'tone-amber' : 'tone-green'}`}><Icon name="alert" size={24} /></span>
+              <span className="tile-count"><b>{waiting}</b></span>
+            </span>
+            <span className="tile-body">
+              <span className="eyebrow">Needs you</span>
+              <strong className="tile-title">{waiting ? `${waiting === 1 ? 'run waits' : 'runs wait'} for your choice` : 'Nothing is waiting for you'}</strong>
+              <span className="muted small">Nothing is tried again on its own.</span>
+            </span>
+          </Link>
+
+          {CONTROL_KINDS.map((kind) => {
+            const mine = controls.filter((c) => c.kind === kind)
+            const ok = mine.filter((c) => verified.has(c.control_id)).length
+            return (
+              <Link key={kind} to="/mappings" className="hub-tile" aria-label={`${CONTROL_KIND_LABEL[kind]}: ${ok} of ${mine.length} Verified`}>
+                <span className="tile-top">
+                  <span className="bubble tone-accent"><Icon name={kind} size={24} /></span>
+                  <span className="tile-count"><b>{ok}</b>/{mine.length}</span>
+                </span>
+                <span className="tile-body">
+                  <span className="eyebrow">Verified</span>
+                  <strong className="tile-title">{CONTROL_KIND_LABEL[kind]}</strong>
+                </span>
+              </Link>
+            )
+          })}
+        </div>
 
         <article className="card map-tile">
           <div className="card-head">

@@ -69,4 +69,12 @@ export const VISIT_STATUS: Record<Visit['status'], string> = {
 export const PRESS_TRACK = ['move', 'gate', 'press', 'check', 'done'] as const
 
 /** "send over IR" → "Send over IR". */
+/** The control kinds NOVA maps (C-02), as the resident reads them. */
+export const CONTROL_KINDS = ['switch', 'power_strip', 'toggle'] as const
+export const CONTROL_KIND_LABEL: Record<(typeof CONTROL_KINDS)[number], string> = {
+  switch: 'Wall switches',
+  power_strip: 'Power strips',
+  toggle: 'Toggles',
+}
+
 export const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
