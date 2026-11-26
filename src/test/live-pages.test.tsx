@@ -128,3 +128,15 @@ describe('Live refresh', () => {
     expect(refetchOn('robot')).toEqual([]) // live state only, no list to read
   })
 })
+
+describe('Home tiles', () => {
+  it('shows the three control kinds NOVA maps, each with its Verified count (C-02, C-08)', async () => {
+    await renderAt('/', { ...initialLive, connected: true })
+    // fixtures: switches 4 (3 Verified), power strip 1 (1 Verified), toggle 1 (Stale)
+    expect(await screen.findByRole('link', { name: 'Wall switches: 3 of 4 Verified' })).toHaveAttribute('href', '/mappings')
+    expect(screen.getByRole('link', { name: 'Power strips: 1 of 1 Verified' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Toggles: 0 of 1 Verified' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Situation' })).toHaveAttribute('href', '/flow')
+    expect(screen.getByRole('link', { name: 'Needs you' })).toHaveAttribute('href', '/failures')
+  })
+})

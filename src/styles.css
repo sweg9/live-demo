@@ -117,7 +117,29 @@ button.quiet { border-color: transparent; background: none; color: var(--muted);
 .tone-gray { background: var(--soft); color: var(--muted); }
 .pill { display: inline-flex; align-items: center; margin-top: 14px; padding: 10px 20px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; text-decoration: none; }
 .pill:hover { filter: brightness(0.97); }
-.map-tile { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 12px; }
+.map-tile { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+/* Home: square tiles, two per row, beside the map (a home app's control list) */
+.home-top { display: grid; grid-template-columns: minmax(380px, 460px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.home-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.hub-tile { aspect-ratio: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 18px; border-radius: 22px; background: var(--panel); box-shadow: var(--shadow); color: var(--text); text-decoration: none; transition: transform 0.12s ease, box-shadow 0.12s ease; }
+.hub-tile:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgb(20 40 20 / 5%), 0 10px 26px rgb(20 40 20 / 8%); }
+.hub-tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hub-tile.attention { box-shadow: inset 0 0 0 2px var(--warn-soft), var(--shadow); }
+.hub-tile.ink { background: radial-gradient(120% 120% at 90% -10%, color-mix(in srgb, var(--glow) 32%, transparent), transparent 58%), var(--ink-card); color: var(--ink-card-text); }
+.hub-tile.ink .eyebrow, .hub-tile.ink .muted { color: var(--ink-card-muted); }
+.hub-tile.ink .bubble { background: rgb(255 255 255 / 8%); color: var(--glow); }
+.hub-tile.ink .tile-state { background: var(--glow); color: #142010; }
+.tile-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.hub-tile .bubble { width: 48px; height: 48px; }
+.tile-state { padding: 5px 11px; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.tile-count { font-size: 1.15rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile-count b { font-size: 1.9rem; font-weight: 800; letter-spacing: -0.04em; color: var(--text); }
+.tile-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.tile-title { font-size: 1.12rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.015em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.home-top .map-tile { align-self: stretch; }
+.home-top .map-tile .home-map-3d { height: 560px; } /* a fixed height: the 3D view sizes its camera once */
 .map-tile .home-map { max-height: 400px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; }
 .card-head .pill { margin: 0; }
@@ -312,6 +334,13 @@ tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
   .estop-status { position: fixed; left: 16px; right: 16px; top: auto; bottom: calc(var(--tabbar) + env(safe-area-inset-bottom) + 80px); width: auto; max-width: none; }
 
   .cards { grid-template-columns: 1fr; gap: 12px; }
+  .home-top { grid-template-columns: 1fr; }
+  .home-tiles { gap: 12px; }
+  .hub-tile { padding: 16px; border-radius: 20px; }
+  .hub-tile .bubble { width: 42px; height: 42px; }
+  .tile-title { font-size: 1rem; }
+  .hub-tile .small { font-size: 0.78rem; }
+  .home-top .map-tile .home-map-3d { height: 380px; }
   .card { padding: 20px; }
   .bubble { width: 48px; height: 48px; }
   .section-head { margin: 28px 4px 12px; }
