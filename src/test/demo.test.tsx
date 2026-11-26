@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { render } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
+import { http, HttpResponse } from 'msw'
 import App from '../App'
+import { server } from './setup'
 import type { PlanItem, Situation } from '../api/proposed'
 import { demoSteps } from '../live/demo'
 import { initialLive, type LiveState } from '../live/live'
@@ -49,6 +51,30 @@ describe('Live demo steps (full_demo)', () => {
 })
 
 describe('Live demo page', () => {
+  const show = () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={['/demo']}>
+          <App />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    )
+  }
+
+  it('C-04, FR-11: always plays at speed 1, so the real actuator stays HOLD_S on the switch', async () => {
+    let asked: string | null = null
+    server.use(http.post('/api/scenarios/:name/start', ({ request }) => {
+      asked = new URL(request.url).search
+      return HttpResponse.json({ scenario: 'full_demo', speed: 1 }, { status: 202 })
+    }))
+    show()
+    expect(screen.queryByRole('combobox', { name: 'Speed' })).toBeNull()
+    await userEvent.click(await screen.findByRole('button', { name: 'Run the demo' }))
+    await screen.findByRole('button', { name: 'Run the demo again' })
+    expect(asked).toBe('?speed=1')
+  })
+
   it('says how to start the hub when it plays no demo scenarios', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     render(

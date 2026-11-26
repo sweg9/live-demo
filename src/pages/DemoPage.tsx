@@ -13,18 +13,19 @@ import { useScene } from '../map/useScene'
 // (needs the hub with --demo-scenarios). The scan, the IR answer and the checks are the
 // scenario's fixed answers; the orchestrator, the safety gate and the press are real, and with
 // `hand: linear_actuators` the press is the real actuator. The emergency stop stays at the top.
+// Always speed 1: the hub divides its waits by the speed, the time on the switch (HOLD_S) too, so
+// a faster run would pull the real actuator back before the switch went down.
 
-const SPEEDS = [1, 2, 4] as const
+const SPEED = 1
 
 export function DemoPage() {
   const live = useLive()
   const map = useScene()
-  const [speed, setSpeed] = useState<number>(1)
   const [since, setSince] = useState<string | null>(null)
   const start = useMutation({
     mutationFn: () => {
       const at = new Date(Date.now() - 1000).toISOString() // a little early: the hub's clock may differ slightly
-      return unwrap(api.POST('/scenarios/{name}/start', { params: { path: { name: DEMO_SCENARIO }, query: { speed } } })).then(() => at)
+      return unwrap(api.POST('/scenarios/{name}/start', { params: { path: { name: DEMO_SCENARIO }, query: { speed: SPEED } } })).then(() => at)
     },
     onSuccess: (at) => setSince(at),
   })
@@ -43,12 +44,7 @@ export function DemoPage() {
             <button type="button" className="primary" disabled={start.isPending || (busy && !finished)} onClick={() => start.mutate()}>
               {since ? 'Run the demo again' : 'Run the demo'}
             </button>
-            <label className="muted small">
-              Speed{' '}
-              <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Speed">
-                {SPEEDS.map((s) => <option key={s} value={s}>{s}×</option>)}
-              </select>
-            </label>
+            <span className="muted small">Plays in real time: about a minute.</span>
           </div>
           {busy && !since && <p className="muted small">The robot is busy: {live.robot.task?.text ? sentence(live.robot.task.text) : ROBOT_STATE[live.robot.state]}.</p>}
           {start.isError && (
