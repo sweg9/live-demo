@@ -33,8 +33,8 @@ export function NowPage() {
       <LiveBar />
 
       <div className="cards">
-        <article className="card feature">
-          <span className="bubble tone-indigo"><Icon name="flow" size={26} /></span>
+        <article className="card feature ink">
+          <span className="bubble tone-accent"><Icon name="flow" size={26} /></span>
           <div>
             <h2 className="eyebrow">Situation</h2>
             {situation ? (
