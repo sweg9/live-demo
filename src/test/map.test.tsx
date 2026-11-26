@@ -71,7 +71,7 @@ describe('FR-02 mappings on the map', () => {
     const map = await screen.findByRole('img', { name: 'Switches and devices on the home map' })
     await userEvent.click(within(map).getByRole('button', { name: 'Switch → Ceiling light' }))
     expect(within(map).getByRole('button', { name: 'Ceiling light, Room A' })).toHaveClass('hl')
-    expect(screen.getByRole('cell', { name: 'Ceiling light' }).closest('tr')).toHaveClass('hl')
+    expect(screen.getByRole('combobox', { name: 'Device for ctl-living-1' }).closest('tr')).toHaveClass('hl')
     expect(within(screen.getByLabelText('Selected item')).getByText(/ctl-living-1/)).toBeInTheDocument()
   })
 
