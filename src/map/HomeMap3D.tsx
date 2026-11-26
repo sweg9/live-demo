@@ -20,7 +20,7 @@ export type Source = 'model' | 'scan' | 'photo'
 const CUT_HEIGHT = 1.8 // m: the raw scan is cut here, like a doll's house
 const MARK_HEIGHT = 1.15 // m: devices and switches float here (their real heights are not known)
 const ROBOT_SPEED = 0.9 // m/s on screen; display only
-const COLORS = { accent: '#4c55e0', unverified: '#b8730a', high: '#e5484d', control: '#16181d', caution: '#b8730a', route: '#858a95', robot: '#4c55e0' }
+const COLORS = { accent: '#4f7a22', unverified: '#a8670a', high: '#e5484d', control: '#141c17', caution: '#a8670a', route: '#747d73', robot: '#4f7a22' } // styles.css tokens
 
 type Props = {
   scene: Scene
@@ -54,8 +54,8 @@ export default function HomeMap3D({ scene, selection = null, onSelect, robot, ro
         shadows
         onPointerMissed={() => onSelect?.(null)}
       >
-        <color attach="background" args={['#eef0f4']} />
-        <hemisphereLight args={['#ffffff', '#d4d6de', 1.35]} />
+        <color attach="background" args={['#edf0e8']} />
+        <hemisphereLight args={['#ffffff', '#d6dccf', 1.35]} />
         <Sun center={center} span={span} />
         {/* Bounds frames the whole home whatever the screen size, then the resident can orbit */}
         <Bounds fit clip margin={1.05}>
@@ -158,7 +158,7 @@ function Scan({ url, textured }: { url: string; textured: boolean }) {
       const old = mesh.material as THREE.MeshStandardMaterial
       mesh.material = new THREE.MeshStandardMaterial({
         map: textured ? old.map : null,
-        color: textured ? '#ffffff' : '#dcdee5',
+        color: textured ? '#ffffff' : '#dde2d6',
         roughness: 1,
         metalness: 0,
         side: THREE.DoubleSide, // the scan is seen from inside the rooms
@@ -198,7 +198,7 @@ function Robot({ to }: { to: THREE.Vector3 }) {
       </mesh>
       <mesh position={[0, 0.32, 0.12]}>
         <boxGeometry args={[0.08, 0.22, 0.08]} />
-        <meshStandardMaterial color="#c3c7ff" />
+        <meshStandardMaterial color="#c6ea8c" />
       </mesh>
     </group>
   )
