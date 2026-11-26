@@ -117,3 +117,14 @@ describe('Now', () => {
     expect(document.querySelector('video, img[src*="stream"]')).toBeNull()
   })
 })
+
+describe('Live refresh', () => {
+  it('FR-01, FR-02: a new control or a changed mapping reads the map again, so a new switch shows without a reload', async () => {
+    const { refetchOn } = await import('../live/LiveProvider')
+    expect(refetchOn('control')).toEqual(expect.arrayContaining([['controls'], ['map']]))
+    expect(refetchOn('mapping')).toEqual(expect.arrayContaining([['mappings'], ['map']]))
+    expect(refetchOn('scan')).toEqual(expect.arrayContaining([['controls'], ['mappings'], ['map']]))
+    expect(refetchOn('run.result')).toEqual([['runs']])
+    expect(refetchOn('robot')).toEqual([]) // live state only, no list to read
+  })
+})
