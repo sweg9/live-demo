@@ -25,6 +25,7 @@ export const NAV: readonly Nav[] = [
   { to: '/routines', label: 'Routines', icon: 'flow' },
   { to: '/failures', label: 'Failures', icon: 'alert' },
   { to: '/history', label: 'History & stats', icon: 'activity', tab: true },
+  { to: '/demo', label: 'Live demo', icon: 'play' },
   { to: '/menu', label: 'Menu', icon: 'menu', tab: true },
 ]
 
