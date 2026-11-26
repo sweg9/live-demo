@@ -131,7 +131,7 @@ export function MapTag({ scene, selection }: { scene: Scene; selection: Selectio
         <strong>{d.name}</strong> · {d.room} · {d.type}
         {d.risk === 'high' && <span className="badge high">high risk</span>}
         <div className="muted">
-          {by.length ? by.map((l) => `${l.control} (${l.status})`).join(', ') : 'No switch linked yet'}
+          {by.length ? by.map((l) => `${scene.controls.find((c) => c.id === l.control)?.label ?? l.control} (${l.status})`).join(', ') : 'No switch linked yet'}
         </div>
       </div>
     )
@@ -140,7 +140,7 @@ export function MapTag({ scene, selection }: { scene: Scene; selection: Selectio
   if (!c) return null
   return (
     <div className="map-tag" aria-label="Selected item">
-      <strong>{c.id}</strong> · {c.room ?? '—'} · {c.role}
+      <strong>{c.label}</strong> · {c.room ?? '—'} · {c.role}
       {c.caution && <span className="badge high">caution: do not press directly</span>}
     </div>
   )

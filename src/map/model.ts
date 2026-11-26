@@ -4,7 +4,7 @@ import { DOCK, type HomeLayout, type Point, type Robot, type Visit } from '../ap
 // What the map draws, worked out from the layout and the API lists. No drawing here, so the
 // same model can feed the 2D plan now and the 3D map later.
 
-export type MapControl = { id: string; kind: Control['kind']; at: Point; pressSpot: Point; room?: string; role: string; caution: boolean }
+export type MapControl = { id: string; label: string; kind: Control['kind']; at: Point; pressSpot: Point; room?: string; role: string; caution: boolean }
 export type MapDevice = { id: string; name: string; type: string; risk: Device['risk']; room: string; at: Point }
 export type MapLink = { id: string; control: string; device: string; from: Point; to: Point; status: MappingStatus; verified: boolean }
 export type Selection = { kind: 'control' | 'device'; id: string } | null
@@ -28,11 +28,20 @@ export type Scene = {
 
 const KIND_LABEL: Record<Control['kind'], string> = { switch: 'Switch', toggle: 'Toggle', power_strip: 'Power strip' }
 
+/** A name the resident can read for each control, "Switch 2" or "Power strip 1": the API gives
+ * controls no name, and the hub's ids are long (ctl_01M8…). Numbered by kind in the order of
+ * GET /controls, so a label stays the same while the controls stay the same. */
+export function controlLabels(controls: Control[]): Map<string, string> {
+  const n: Partial<Record<Control['kind'], number>> = {}
+  return new Map(controls.map((c) => [c.control_id, `${KIND_LABEL[c.kind]} ${(n[c.kind] = (n[c.kind] ?? 0) + 1)}`]))
+}
+
 const roomAt = (rooms: HomeLayout['rooms'], p: Point) =>
   rooms.find((r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h)?.room
 
 export function buildScene(layout: HomeLayout, controls: Control[], devices: Device[], mappings: Mapping[]): Scene {
   const ctl = new Map(controls.map((c) => [c.control_id, c]))
+  const labels = controlLabels(controls)
   const dev = new Map(devices.map((d) => [d.device_id, d]))
   const ctlAt = new Map(layout.controls.map((c) => [c.control_id, c]))
   const devAt = new Map(layout.devices.map((d) => [d.device_id, d.at]))
@@ -50,7 +59,7 @@ export function buildScene(layout: HomeLayout, controls: Control[], devices: Dev
     if (!c) return []
     const targets = links.filter((l) => l.control === c.control_id).map((l) => dev.get(l.device)?.name ?? l.device)
     return [{
-      id: c.control_id, kind: c.kind, at: p.at, pressSpot: p.press_spot, room: roomAt(layout.rooms, p.at),
+      id: c.control_id, label: labels.get(c.control_id) ?? c.control_id, kind: c.kind, at: p.at, pressSpot: p.press_spot, room: roomAt(layout.rooms, p.at),
       role: `${KIND_LABEL[c.kind]}${targets.length ? ` → ${targets.join(', ')}` : ' (no device yet)'}`,
       caution: c.kind === 'power_strip', // the robot must not press a socket directly
     }]

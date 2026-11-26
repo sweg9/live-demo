@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, unwrap, type Device, type Mapping } from '../api/client'
 import { MapTag } from '../map/HomeMap'
 import { MapView } from '../map/MapView'
-import { highlighted, type Selection } from '../map/model'
+import { controlLabels, highlighted, type Selection } from '../map/model'
 import { useScene } from '../map/useScene'
 
 // FR-02, C-06, C-08: the resident confirms or rejects a mapping, or says which device the control
@@ -16,6 +16,7 @@ export function MappingsPage() {
   const qc = useQueryClient()
   const mappings = useQuery({ queryKey: ['mappings'], queryFn: () => unwrap(api.GET('/mappings')) })
   const devices = useQuery({ queryKey: ['devices'], queryFn: () => unwrap(api.GET('/devices')) })
+  const controls = useQuery({ queryKey: ['controls'], queryFn: () => unwrap(api.GET('/controls')) })
   const map = useScene()
   const [selection, setSelection] = useState<Selection>(null)
 
@@ -38,6 +39,8 @@ export function MappingsPage() {
   if (mappings.isPending || devices.isPending) return <p>Loading…</p>
   if (mappings.isError) return <p className="error">Could not load mappings: {mappings.error.message}</p>
 
+  const labels = controlLabels(controls.data ?? [])
+  const name = (id: string) => labels.get(id) ?? id
   const byId = new Map((devices.data ?? []).map((d: Device) => [d.device_id, d]))
   const rooms = groupBy(mappings.data, (m) => (m.device_id && byId.get(m.device_id)?.room) || 'Unknown room')
   const hl = map.scene ? highlighted(map.scene, selection) : new Set<string>()
@@ -69,13 +72,13 @@ export function MappingsPage() {
                 return (
                   <tr key={m.mapping_id} className={hl.has(m.mapping_id) ? 'hl' : undefined}>
                     <td>
-                      <button type="button" className="linklike" onClick={() => setSelection({ kind: 'control', id: m.control_id })}>
-                        {m.control_id}
+                      <button type="button" className="linklike" title={m.control_id} onClick={() => setSelection({ kind: 'control', id: m.control_id })}>
+                        {name(m.control_id)}
                       </button>
                     </td>
                     <td>
                       <select
-                        aria-label={`Device for ${m.control_id}`}
+                        aria-label={`Device for ${name(m.control_id)}`}
                         value={draft[m.mapping_id] ?? m.device_id ?? ''}
                         disabled={change.isPending}
                         onChange={(e) => setDraft((x) => ({ ...x, [m.mapping_id]: e.target.value }))}
