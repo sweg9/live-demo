@@ -29,8 +29,8 @@ The dashboard reads `GET /situations`, `/visits` and `/robot` again when the soc
 | What | In the spec | Rules |
 |---|---|---|
 | Home map | `GET /map` → `HomeLayout` (the dashboard's shape): centimetres on the floor, rooms, walls, furniture, each control's position and press spot with its `spot_id`, the dock. Numbers only, no photos. The positions of the demo home are estimates until the map team marks them on the scan | FR-09, C-05 |
-| Change the device of a mapping | `PATCH /mappings/{mapping_id} {device_id}` → `200 Mapping`, back to `Pending`; the `mapping` event carries `previous_device_id`. Not on the Devices screen yet | FR-02, C-08 |
-| Hub error | `notification` topic `task_failed` with `task`: the hand stopped and the runs going on were cancelled | C-04 |
+| Change the device of a mapping | `PATCH /mappings/{mapping_id} {device_id}` → `200 Mapping`, back to `Pending`; the `mapping` event carries `previous_device_id`. On Devices: pick the device in the row, then Save | FR-02, C-08 |
+| Hub error | `notification` topic `task_failed` with `task`: the hand stopped and the runs going on were cancelled. The notification links to Failures, where they wait for the resident | C-04, C-09 |
 
 ## Still proposed
 

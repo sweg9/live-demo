@@ -4,16 +4,25 @@ import { useLive } from '../live/LiveProvider'
 
 // The live notifications on Home, newest first. Some ask the resident: after a failure (retry or
 // leave, C-09) or before acting (approve or dismiss, FR-06); those lead to the page to answer.
+// After a hub error (`task_failed`, C-04) the hand stopped and the runs going on were cancelled:
+// they wait on Failures, and nothing is tried again on its own.
+
+function linkFor(n: Notification): { to: string; text: string } | null {
+  if (n.choices?.includes('retry')) return { to: '/failures', text: 'Choose' }
+  if (n.choices?.includes('approve')) return { to: '/flow', text: 'Choose' }
+  if (n.topic === 'task_failed') return { to: '/failures', text: 'Review the cancelled runs' }
+  return null
+}
 
 export function NoteText({ n }: { n: Notification }) {
-  const answer = n.choices?.includes('retry') ? '/failures' : n.choices?.includes('approve') ? '/flow' : null
+  const link = linkFor(n)
   return (
     <>
       {n.message}
-      {answer && (
+      {link && (
         <>
           {' '}
-          <Link to={answer}>Choose</Link>
+          <Link to={link.to}>{link.text}</Link>
         </>
       )}
     </>

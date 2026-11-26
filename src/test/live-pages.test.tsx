@@ -68,6 +68,16 @@ describe('Situation → run, before the visit plan arrives', () => {
   })
 })
 
+describe('Notifications', () => {
+  it('C-04: a hub error says the hand stopped and leads to the cancelled runs, without retrying', async () => {
+    const message = 'I stopped: the hub hit an error (RuntimeError) during leave_home. The hand stopped and the current run was cancelled.'
+    await renderAt('/', { ...initialLive, connected: true, notifications: [{ level: 'warning', topic: 'task_failed', task: 'leave_home', message, at: '2026-11-26T12:00:00Z' }] })
+    const note = screen.getByText(/I stopped: the hub hit an error/).closest('li')!
+    expect(note).toHaveClass('warn')
+    expect(within(note).getByRole('link', { name: 'Review the cancelled runs' })).toHaveAttribute('href', '/failures')
+  })
+})
+
 describe('Now without a map', () => {
   it('says the map is not set up yet instead of an error', async () => {
     server.use(http.get('/api/map', () => HttpResponse.json({ code: 'not_found', message: 'No such route' }, { status: 404 })))
