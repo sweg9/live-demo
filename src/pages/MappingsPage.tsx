@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, unwrap, type Device, type Mapping } from '../api/client'
+import { api, ApiError, unwrap, type Device, type Mapping } from '../api/client'
 import { MapTag } from '../map/HomeMap'
 import { MapView } from '../map/MapView'
 import { highlighted, type Selection } from '../map/model'
 import { useScene } from '../map/useScene'
 
-// FR-02, C-06, C-08: the resident confirms or rejects a mapping. Only Verified mappings are used,
-// so the status is always shown next to the link. Selecting a switch on the map (or its row)
+// FR-02, C-06, C-08: the resident confirms or rejects a mapping, or says which device the control
+// really runs (PATCH /mappings/{id}). A changed device goes back to Pending, so nothing runs it
+// until it is checked or confirmed again. Only Verified mappings are used, so the status is
+// always shown next to the link. Selecting a switch on the map (or its row)
 // highlights the devices it is linked to.
 
 export function MappingsPage() {
@@ -22,6 +24,14 @@ export function MappingsPage() {
       verb === 'confirm'
         ? unwrap(api.POST('/mappings/{mapping_id}/confirm', { params: { path: { mapping_id: id } } }))
         : unwrap(api.POST('/mappings/{mapping_id}/reject', { params: { path: { mapping_id: id } } })),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['mappings'] }),
+  })
+  // The device picked in a row, until it is saved.
+  const [draft, setDraft] = useState<Record<string, string>>({})
+  const change = useMutation({
+    mutationFn: ({ id, device_id }: { id: string; device_id: string }) =>
+      unwrap(api.PATCH('/mappings/{mapping_id}', { params: { path: { mapping_id: id } }, body: { device_id } })),
+    onSuccess: (_m, { id }) => setDraft(({ [id]: _, ...rest }) => rest),
     onSettled: () => qc.invalidateQueries({ queryKey: ['mappings'] }),
   })
 
@@ -55,6 +65,7 @@ export function MappingsPage() {
             <tbody>
               {list.map((m: Mapping) => {
                 const d = m.device_id ? byId.get(m.device_id) : undefined
+                const changed = (x: Mapping) => !!draft[x.mapping_id] && draft[x.mapping_id] !== x.device_id
                 return (
                   <tr key={m.mapping_id} className={hl.has(m.mapping_id) ? 'hl' : undefined}>
                     <td>
@@ -63,8 +74,23 @@ export function MappingsPage() {
                       </button>
                     </td>
                     <td>
-                      {d ? d.name : 'Which device is this?'}
+                      <select
+                        aria-label={`Device for ${m.control_id}`}
+                        value={draft[m.mapping_id] ?? m.device_id ?? ''}
+                        disabled={change.isPending}
+                        onChange={(e) => setDraft((x) => ({ ...x, [m.mapping_id]: e.target.value }))}
+                      >
+                        {!m.device_id && <option value="">Which device is this?</option>}
+                        {(devices.data ?? []).map((x) => (
+                          <option key={x.device_id} value={x.device_id}>{x.name} · {x.room}</option>
+                        ))}
+                      </select>
                       {d?.risk === 'high' && <span className="badge high">high risk</span>}
+                      {changed(m) && (
+                        <button type="button" disabled={change.isPending} onClick={() => change.mutate({ id: m.mapping_id, device_id: draft[m.mapping_id] })}>
+                          Save
+                        </button>
+                      )}
                     </td>
                     <td><span className={`badge ${m.status}`}>{m.status}</span></td>
                     <td>{Math.round(m.confidence * 100)}%</td>
@@ -83,7 +109,10 @@ export function MappingsPage() {
           </table>
         </div>
       ))}
-      <p className="muted">Changing the device and asking for a new check need API routes that do not exist yet.</p>
+      {change.isError && (
+        <p role="alert" className="error">{change.error instanceof ApiError ? change.error.message : 'The device could not be changed.'}</p>
+      )}
+      <p className="muted">A changed device goes back to Pending: nothing runs it until it is checked or confirmed again. Asking for a new check needs an API route that does not exist yet.</p>
     </section>
   )
 }

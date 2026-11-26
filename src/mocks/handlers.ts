@@ -79,6 +79,8 @@ export const handlers = [
   http.get('/api/robot', signedIn(() => HttpResponse.json(hub.state.robot))),
 
   // Mappings
+  http.patch<{ id: string }>('/api/mappings/:id', signedIn(async ({ params, request }) =>
+    reply(hub.changeDevice(params.id, ((await request.json()) as { device_id: string }).device_id)))),
   http.post<{ id: string }>('/api/mappings/:id/confirm', signedIn(({ params }) => setStatus(params.id, 'Verified'))),
   http.post<{ id: string }>('/api/mappings/:id/reject', signedIn(({ params }) => setStatus(params.id, 'Rejected'))),
 

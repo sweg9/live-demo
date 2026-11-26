@@ -60,10 +60,29 @@ describe('FR-12 history (C-07)', () => {
 describe('FR-02 mappings (C-06, C-08)', () => {
   it('confirms a Pending mapping', async () => {
     renderAt('/mappings')
-    const row = (await screen.findByRole('cell', { name: 'Fan' })).closest('tr')!
+    const row = (await screen.findByRole('combobox', { name: 'Device for ctl-living-2' })).closest('tr')!
     expect(within(row).getByText('Pending')).toBeInTheDocument()
     await userEvent.click(within(row).getByRole('button', { name: 'Confirm' }))
     expect(await within(row).findByText('Verified')).toBeInTheDocument()
+  })
+
+  it('changes the device of a Verified mapping, which goes back to Pending (PATCH /mappings/{id})', async () => {
+    renderAt('/mappings')
+    const pick = await screen.findByRole('combobox', { name: 'Device for ctl-living-1' })
+    const row = pick.closest('tr')!
+    expect(within(row).getByText('Verified')).toBeInTheDocument()
+    expect(within(row).queryByRole('button', { name: 'Save' })).toBeNull() // nothing to save yet
+    await userEvent.selectOptions(pick, 'dev-fan')
+    expect(hub.state.mappings.find((m) => m.mapping_id === 'map-1')!.device_id).toBe('dev-ceiling') // not before Save
+    await userEvent.click(within(row).getByRole('button', { name: 'Save' }))
+    expect(await within(row).findByText('Pending')).toBeInTheDocument()
+    expect(hub.state.mappings.find((m) => m.mapping_id === 'map-1')).toMatchObject({ device_id: 'dev-fan', status: 'Pending' })
+    expect(within(row).queryByRole('button', { name: 'Save' })).toBeNull()
+  })
+
+  it('refuses an unknown device as the hub does', () => {
+    expect(hub.changeDevice('map-1', 'dev-nope')).toMatchObject({ status: 404, body: { code: 'unknown_device' } })
+    expect(hub.changeDevice('map-nope', 'dev-fan')).toMatchObject({ status: 404, body: { code: 'unknown_mapping' } })
   })
 })
 

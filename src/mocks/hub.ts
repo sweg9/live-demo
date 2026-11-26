@@ -222,6 +222,19 @@ export const hub = {
     return { status: 200, body: r }
   },
 
+  /** PATCH /mappings/{id}: the resident names the device. Back to Pending (C-08), as the hub does. */
+  changeDevice(mappingId: string, deviceId: string): Reply {
+    const m = this.state.mappings.find((x) => x.mapping_id === mappingId)
+    if (!m) return err(404, 'unknown_mapping', 'Unknown mapping')
+    if (!fx.devices.some((d) => d.device_id === deviceId)) return err(404, 'unknown_device', 'Unknown device')
+    if (m.device_id === deviceId) return { status: 200, body: m }
+    const before = m.device_id
+    m.device_id = deviceId
+    m.status = 'Pending'
+    this.send?.({ kind: 'mapping', data: { ...m, previous_device_id: before } })
+    return { status: 200, body: m }
+  },
+
   login(password: string): Reply {
     const now = Date.now()
     const s = this.state
