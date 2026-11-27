@@ -50,6 +50,10 @@ export function Plan2D({ scene }: { scene: Scene }) {
         <line key={i} className="wall" x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={t} />
       ))}
 
+      {scene.doors.map(([x1, y1, x2, y2, t], i) => (
+        <line key={`door-${i}`} className="door" x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={t * 0.6} />
+      ))}
+
       {scene.rooms.map((r, i) =>
         r.label === false ? null : (
           <text key={i} className="room-label" x={r.x + 14} y={r.y + 28}>{r.room}</text>

@@ -44,9 +44,13 @@ export const layout: HomeLayout = {
     [445, 495, 445, 520, 10],
     [30, 370, 258, 370, 18],
     [445, 380, 620, 380, 12],
-    [30, 148, 670, 148, 12], // hallway: one straight strip
-    [30, 148, 30, 370, 12],
-    [670, 148, 670, 520, 12],
+    // hallway: open at both ends; the far wall is two pieces, open opposite the lobby, each with a
+    // neighbour's door (the 90 cm gaps, drawn closed), as on the scan and the map team's model
+    [30, 148, 96, 148, 12],
+    [186, 148, 252, 148, 12],
+    [445, 148, 512, 148, 12],
+    [602, 148, 670, 148, 12],
+    [670, 380, 670, 520, 12],
   ],
   furniture: [
     { kind: 'bed', x: 42, y: 522, w: 106, d: 206, h: 60 },
