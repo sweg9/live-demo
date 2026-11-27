@@ -43,7 +43,7 @@ describe('FR-12 history (C-07)', () => {
   })
 
   it('counts the verified share without rejected mappings (C-08)', () => {
-    expect(verifiedShare(mappings)).toBe(4 / 6) // 4 Verified of 6, none Rejected
+    expect(verifiedShare(mappings)).toBe(5 / 7) // 5 Verified of 7, none Rejected
     expect(verifiedShare([{ ...mappings[0], status: 'Rejected' }, mappings[1]])).toBe(0) // 0 of 1 open
     expect(verifiedShare([])).toBeNull()
   })
