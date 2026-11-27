@@ -12,7 +12,7 @@ const isTiled = (room: string) => /hall|lobby/i.test(room)
 
 const C = {
   wall: '#f3f1ec', wallTop: '#5b5e66', wood: '#c9a272', linen: '#fbfaf7', blanket: '#c9d3e6', pillow: '#ffffff',
-  desk: '#d0ad7c', wardrobe: '#d8c19a', shelf: '#cdb48b', chair: '#8f96a3',
+  door: '#9a9b96', desk: '#d0ad7c', wardrobe: '#d8c19a', shelf: '#cdb48b', chair: '#8f96a3',
 }
 
 // Memoised: pages re-render on every live event; the model only changes with the plan.
@@ -52,6 +52,18 @@ export const PlanModel = memo(function PlanModel({ scene }: { scene: Scene }) {
         return (
           <mesh key={i} position={[m((x1 + x2) / 2), WALL_H / 2, m((y1 + y2) / 2)]} material={wallMats} castShadow receiveShadow>
             <boxGeometry args={size} />
+          </mesh>
+        )
+      })}
+
+      {scene.doors.map(([x1, y1, x2, y2, t], i) => {
+        const horizontal = y1 === y2
+        const len = m(Math.abs(x2 - x1) + Math.abs(y2 - y1))
+        const h = WALL_H - 0.04 // a closed door in its gap, a little under the cut-away
+        return (
+          <mesh key={`door-${i}`} position={[m((x1 + x2) / 2), h / 2, m((y1 + y2) / 2)]} castShadow receiveShadow>
+            <boxGeometry args={horizontal ? [len, h, m(t) * 0.6] : [m(t) * 0.6, h, len]} />
+            <meshStandardMaterial color={C.door} roughness={0.7} />
           </mesh>
         )
       })}

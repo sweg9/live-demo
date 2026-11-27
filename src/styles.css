@@ -241,6 +241,7 @@ tr.hl td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
 .home-map .seam { stroke: rgb(90 70 40 / 14%); stroke-width: 1; fill: none; }
 .home-map .floor { stroke: none; }
 .home-map .wall { stroke: var(--wall); stroke-linecap: square; }
+.home-map .door { stroke: #9a9b96; stroke-linecap: butt; } /* a closed door out of the plan */
 .home-map .f-bed .frame { fill: var(--wood-dark); }
 .home-map .f-bed .mattress { fill: var(--linen); }
 .home-map .f-bed .blanket { fill: var(--blanket); }
