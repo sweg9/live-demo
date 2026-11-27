@@ -61,9 +61,8 @@ export const layout: HomeLayout = {
     { kind: 'bed', x: 557, y: 522, w: 104, d: 214, h: 60 },
     { kind: 'desk', x: 557, y: 736, w: 86, d: 90, h: 75 },
     { kind: 'wardrobe', x: 643, y: 736, w: 18, d: 90, h: 200 },
-    { kind: 'wardrobe', x: 42, y: 378, w: 32, d: 140, h: 200 },
-    { kind: 'shelf', x: 78, y: 388, w: 62, d: 76, h: 190 },
-    { kind: 'shelf', x: 575, y: 450, w: 42, d: 68, h: 120 },
+    { kind: 'shelf', x: 42, y: 378, w: 62, d: 140, h: 190 },
+    { kind: 'shelf', x: 575, y: 386, w: 42, d: 132, h: 120 },
   ],
   ceiling: 249,
   controls: [
