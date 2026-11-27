@@ -33,9 +33,7 @@ export const layout: HomeLayout = {
     [40, 520, 40, 832, 12],
     [665, 520, 665, 832, 12],
     [350, 520, 350, 832, 10], // between the rooms
-    [40, 520, 150, 520, 12], // Room A door: 150–240
-    [240, 520, 470, 520, 14], // Room B door: 470–555
-    [555, 520, 665, 520, 12],
+    [258, 520, 445, 520, 14], // the lobby's wall; rooms and entries have no wall between them (a boundary on the scan)
     [40, 370, 40, 520, 12], // Entry A, in line with Room A's outer wall
     [620, 380, 620, 520, 10],
     [258, 365, 258, 420, 10], // Entry A door to the lobby: 420–495
@@ -72,11 +70,11 @@ export const layout: HomeLayout = {
   controls: [
     // The ceiling light switch, marked on the scan (2026-11-27): hallway wall inside Entry A, beside the door.
     { control_id: 'ctl-living-1', at: { x: 229, y: 379 }, press_spot: { x: 229, y: 428 }, spot_id: 'spot-living-1' },
-    { control_id: 'ctl-living-2', at: { x: 146, y: 520 }, press_spot: { x: 180, y: 565 }, spot_id: 'spot-living-2' },
+    { control_id: 'ctl-living-2', at: { x: 243, y: 379 }, press_spot: { x: 243, y: 428 }, spot_id: 'spot-living-2' },
     { control_id: 'ctl-living-3', at: { x: 200, y: 832 }, press_spot: { x: 195, y: 775 }, spot_id: 'spot-living-3' },
     { control_id: 'ctl-bed-1', at: { x: 557, y: 785 }, press_spot: { x: 515, y: 785 }, spot_id: 'spot-bed-1' },
     { control_id: 'ctl-bed-strip', at: { x: 495, y: 832 }, press_spot: { x: 495, y: 775 }, spot_id: 'spot-bed-strip' },
-    { control_id: 'ctl-bed-2', at: { x: 474, y: 520 }, press_spot: { x: 505, y: 565 }, spot_id: 'spot-bed-2' },
+    { control_id: 'ctl-bed-2', at: { x: 501, y: 386 }, press_spot: { x: 501, y: 435 }, spot_id: 'spot-bed-2' },
     // Room B's ceiling light switch, at the same place as Room A's: hallway wall inside Entry B, beside the door.
     { control_id: 'ctl-bed-ceiling', at: { x: 487, y: 386 }, press_spot: { x: 487, y: 435 }, spot_id: 'spot-bed-ceiling' },
   ],
