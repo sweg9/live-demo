@@ -77,13 +77,13 @@ export const layout: HomeLayout = {
     // Room B's ceiling light switch, at the same place as Room A's: hallway wall inside Entry B, beside the door.
     { control_id: 'ctl-bed-ceiling', at: { x: 487, y: 386 }, press_spot: { x: 487, y: 435 }, spot_id: 'spot-bed-ceiling' },
   ],
+  // The air purifier is left off the map (Dashboard owner, 2026-11-27); they stay in the lists.
   devices: [
     { device_id: 'dev-ceiling', at: { x: 195, y: 676 } },
     { device_id: 'dev-fan', at: { x: 175, y: 800 } },
     { device_id: 'dev-floor', at: { x: 228, y: 740 } },
     { device_id: 'dev-desk', at: { x: 600, y: 785 } },
     { device_id: 'dev-heater', at: { x: 530, y: 812 } },
-    { device_id: 'dev-purifier', at: { x: 520, y: 700 } },
     { device_id: 'dev-ceiling-b', at: { x: 508, y: 676 } }, // the middle of Room B, as dev-ceiling is in Room A
   ],
   dock: { x: 350, y: 440 },
