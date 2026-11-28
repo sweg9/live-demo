@@ -9,6 +9,7 @@ import { RobotPage } from './pages/RobotPage'
 import { RoutinesPage } from './pages/RoutinesPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { MenuPage } from './pages/MenuPage'
+import { DemoPage } from './pages/DemoPage'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
         <Route path="history" element={<HistoryPage />} />
         <Route path="routines" element={<RoutinesPage />} />
         <Route path="menu" element={<MenuPage />} />
+        <Route path="demo" element={<DemoPage />} />
       </Route>
       </Routes>
     </AuthGate>

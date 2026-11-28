@@ -22,8 +22,44 @@ export type Scene = {
   /** For drawing only; empty when the map has no plan yet. */
   walls: NonNullable<HomeLayout['walls']>
   furniture: NonNullable<HomeLayout['furniture']>
+  /** Closed doors: a door-sized gap in a wall with a room on one side only (a door out of the plan). */
+  doors: Wall[]
   ceiling: number
   origin: Point // top-left of everything drawn
+}
+
+type Wall = NonNullable<HomeLayout['walls']>[number]
+
+const DOOR_CM = { min: 60, max: 120 } // a gap this wide between two walls in one line is a door
+const SIDE_CM = 30 // how far from the wall to look for a room on each side
+
+/**
+ * The doors to draw closed. The spec draws doors as gaps between walls. A gap with a room on both
+ * sides is a doorway inside the home and stays open; one with a room on one side only leads out of
+ * the plan (a neighbour's room across the hallway), so it is drawn as a closed door in that gap.
+ */
+export function closedDoors(walls: Wall[], rooms: HomeLayout['rooms']): Wall[] {
+  const inRoom = (x: number, y: number) => rooms.some((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+  const doors: Wall[] = []
+  for (const a of walls) {
+    for (const b of walls) {
+      const horizontal = a[1] === a[3] && b[1] === b[3] && a[1] === b[1]
+      const vertical = a[0] === a[2] && b[0] === b[2] && a[0] === b[0]
+      if (!horizontal && !vertical) continue
+      const end = horizontal ? Math.max(a[0], a[2]) : Math.max(a[1], a[3])
+      const start = horizontal ? Math.min(b[0], b[2]) : Math.min(b[1], b[3])
+      const gap = start - end
+      if (gap < DOOR_CM.min || gap > DOOR_CM.max) continue
+      const mid = (end + start) / 2
+      const sides = horizontal
+        ? [inRoom(mid, a[1] - SIDE_CM), inRoom(mid, a[1] + SIDE_CM)]
+        : [inRoom(a[0] - SIDE_CM, mid), inRoom(a[0] + SIDE_CM, mid)]
+      if (sides[0] === sides[1]) continue
+      const t = Math.min(a[4], b[4])
+      doors.push(horizontal ? [end, a[1], start, a[1], t] : [a[0], end, a[0], start, t])
+    }
+  }
+  return doors
 }
 
 const KIND_LABEL: Record<Control['kind'], string> = { switch: 'Switch', toggle: 'Toggle', power_strip: 'Power strip' }
@@ -78,7 +114,7 @@ export function buildScene(layout: HomeLayout, controls: Control[], devices: Dev
     spots: Object.fromEntries([[DOCK, layout.dock], ...layout.controls.map((c) => [c.spot_id, c.press_spot])]),
     size: { w: Math.max(...xs), h: Math.max(...ys) },
     origin: { x: Math.min(...xs), y: Math.min(...ys) },
-    walls, furniture: layout.furniture ?? [], ceiling: layout.ceiling ?? 240,
+    walls, furniture: layout.furniture ?? [], doors: closedDoors(walls, layout.rooms), ceiling: layout.ceiling ?? 240,
   }
 }
 

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App'
 import { HomeMap } from '../map/HomeMap'
-import { buildScene, highlighted, robotPoint, visitStops } from '../map/model'
+import { buildScene, closedDoors, highlighted, robotPoint, visitStops } from '../map/model'
 import { controls, devices, mappings } from '../mocks/fixtures'
 import { layout } from '../mocks/layout'
 
@@ -81,5 +81,21 @@ describe('FR-02 mappings on the map', () => {
     within(map).getByRole('button', { name: /Power strip.*caution/ }).focus()
     await userEvent.keyboard('{Enter}')
     expect(within(screen.getByLabelText('Selected item')).getByText(/do not press directly/)).toBeInTheDocument()
+  })
+})
+
+describe('closed doors', () => {
+  it('draws a gap out of the plan as a closed door, and keeps the doorways inside open', () => {
+    expect(closedDoors(layout.walls ?? [], layout.rooms)).toEqual([
+      [96, 148, 186, 148, 12], // the neighbours' doors across the hallway
+      [512, 148, 602, 148, 12],
+    ])
+  })
+
+  it('needs a door-sized gap', () => {
+    const rooms = [{ room: 'Hallway', x: 0, y: 100, w: 600, h: 200 }]
+    expect(closedDoors([[0, 100, 100, 100, 10], [130, 100, 300, 100, 10]], rooms)).toEqual([]) // 30 cm: a crack
+    expect(closedDoors([[0, 100, 100, 100, 10], [300, 100, 600, 100, 10]], rooms)).toEqual([]) // 2 m: an opening
+    expect(closedDoors([[0, 100, 100, 100, 10], [190, 100, 600, 100, 10]], rooms)).toEqual([[100, 100, 190, 100, 10]])
   })
 })

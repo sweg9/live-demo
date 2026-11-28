@@ -15,6 +15,7 @@ const PATHS = {
   pause: 'M9 6v12M15 6v12',
   out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   close: 'M6 6l12 12M18 6 6 18',
+  play: 'M8 5v14l11-7z',
   // The three control kinds NOVA maps (C-02: switch, power_strip, toggle)
   switch: 'M7 3h10v18H7zM10.5 7h3v10h-3zM10.5 12h3',
   power_strip: 'M2 9h17v6H2zM6 12h.01M10 12h.01M14 12h.01M19 12h3',

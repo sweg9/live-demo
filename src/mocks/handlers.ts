@@ -100,6 +100,8 @@ export const handlers = [
     hub.stop()
     return HttpResponse.json({ ral: 'stopped' })
   })),
+  // The mock plays its own bedtime scenario; the hub's demo scenarios need the real hub (--demo-scenarios).
+  http.post('/api/scenarios/:name/start', signedIn(() => HttpResponse.json({ code: 'not_found', message: 'The mock plays no hub scenarios' }, { status: 404 }))),
   http.get('/api/proactive', signedIn(() => HttpResponse.json({ paused: hub.state.paused }))),
   http.put('/api/proactive', signedIn(async ({ request }) => {
     const body = (await request.json()) as { paused: boolean }

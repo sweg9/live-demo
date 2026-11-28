@@ -15,6 +15,7 @@ const GROUPS: Array<{ title: string; items: Array<{ to: string; label: string; i
       { to: '/flow', label: 'Situation → run', icon: 'flow' },
       { to: '/failures', label: 'Failures', icon: 'alert' },
       { to: '/robot', label: 'Send the robot', icon: 'robot' },
+      { to: '/demo', label: 'Live demo', icon: 'play' },
     ],
   },
   {

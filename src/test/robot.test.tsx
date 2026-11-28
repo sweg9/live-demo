@@ -29,8 +29,8 @@ describe('Send the robot', () => {
     renderRobot()
     const m = await map()
     await userEvent.click(within(m).getByRole('button', { name: 'Floor lamp, Room A' }))
-    await userEvent.click(within(m).getByRole('button', { name: 'Air purifier, Room B' }))
-    expect(within(screen.getByRole('list', { name: 'Stops' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Floor lamp', 'Air purifier'])
+    await userEvent.click(within(m).getByRole('button', { name: 'Room B ceiling light, Room B' }))
+    expect(within(screen.getByRole('list', { name: 'Stops' })).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Floor lamp', 'Room B ceiling light'])
     await userEvent.click(screen.getByRole('button', { name: 'Go: 2 stops' }))
     expect(await screen.findByText('No place picked.')).toBeInTheDocument()
     expect(hub.state.routes).toBe(1)
@@ -46,7 +46,7 @@ describe('Send the robot', () => {
   it('cannot send while the robot is busy', async () => {
     const task = { run_id: 'r', device_id: 'dev-floor', stage: 'S6' as const, step: 'press' as const, text: 'press', method: 'press' as const, channel: 'ARM' as const }
     renderRobot({ ...initialLive, connected: true, robot: { ...IDLE_ROBOT, state: 'pressing', task } })
-    await userEvent.click(within(await map()).getByRole('button', { name: 'Air purifier, Room B' }))
+    await userEvent.click(within(await map()).getByRole('button', { name: 'Room B ceiling light, Room B' }))
     expect(screen.getByRole('button', { name: 'Go here' })).toBeDisabled()
     expect(screen.getByText(/The robot is busy: Press/)).toBeInTheDocument()
   })
